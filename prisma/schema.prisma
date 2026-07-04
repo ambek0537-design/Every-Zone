@@ -1,0 +1,1891 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ==========================================
+// 1. USER & IDENTITY NODE
+// ==========================================
+
+enum UserRole {
+  BUYER
+  VENDOR
+  ADMIN
+  SUPER_ADMIN
+  SUB_ADMIN
+  USER
+}
+
+enum VendorType {
+  RETAIL
+  REAL_ESTATE
+  EMPLOYMENT_AGENCY
+  SERVICE_PROVIDER
+}
+
+enum VendorStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  REJECTED
+}
+
+enum SubscriptionStatus {
+  PENDING
+  ACTIVE
+  GRACE_PERIOD
+  EXPIRED
+  CANCELLED
+  SUSPENDED
+}
+
+enum PaymentProvider {
+  CHAPA
+  TELEBIRR
+  CBE
+}
+
+enum KYCStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+model User {
+  id                 String             @id @default(uuid())
+  email              String             @unique
+  fullName           String
+  firstName          String             @default("")
+  lastName           String             @default("")
+  phone              String             @unique @default("")
+  password           String             @default("")
+  role               UserRole           @default(BUYER)
+  active             Boolean            @default(true)
+  verified           Boolean            @default(false)
+  avatarUrl          String?
+  
+  // Anti-fraud/Identity Verification
+  nationalId         String?            @unique
+  selfieUrl          String?
+  verificationStatus VerificationStatus @default(PENDING)
+  verifiedAt         DateTime?
+
+  // Banning & Fraud prevention stats
+  failedRefAttempts  Int                @default(0)
+  isSuspended        Boolean            @default(false)
+
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  // Relationships
+  vendorProfile       Vendor?
+  subAdminPermission  SubAdminPermission?
+  manualPayments      ManualPayment[]
+  submittedReports    SafetyReport[]     @relation("ReporterRelation")
+  submittedRatings    VendorRating[]    @relation("ReviewerRelation")
+  equbMemberships     EqubCircleMember[]
+  lotteryTickets      LotteryTicket[]
+  lotteryWinners      LotteryWinner[]
+  matchmakingProfiles SundayMatchmakingProfile[]
+  kyc                 KYC?
+  subscriptions       Subscription[]
+  profile             UserProfile?
+  settings            UserSettings?
+
+  @@index([role])
+  @@index([verificationStatus])
+  @@index([phone])
+  @@index([email])
+}
+
+// ==========================================
+// 2. VENDOR & SUBSCRIPTION ENGINE
+// ==========================================
+
+enum ShopCategory {
+  RETAIL
+  REAL_ESTATE
+  AGENCY
+}
+
+model Vendor {
+  id                 String             @id @default(uuid())
+  userId             String             @unique
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  shopName           String
+  businessName       String             @default("")
+  businessDescription String?
+  category           ShopCategory
+  vendorType         VendorType?
+  logoUrl            String?
+  coverUrl           String?
+  verified           Boolean            @default(false)
+  followers          Int                @default(0)
+  rating             Float              @default(0.0)
+  status             VendorStatus       @default(PENDING)
+  subscriptionStatus SubscriptionStatus @default(SUSPENDED)
+  rentPaid           Boolean            @default(false)
+  phoneNumber        String?
+  telegramUsername   String?
+  
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  // Relationships
+  listings           Listing[]
+  subscriptionLogs   SubscriptionLog[]
+  ratings            VendorRating[]
+  fraudReportsLiked  SafetyReport[]
+  chatRooms          ChatRoom[]
+  subscriptions      Subscription[]
+
+  @@index([category])
+  @@index([subscriptionStatus])
+  @@index([vendorType])
+  @@index([status])
+}
+
+model SubscriptionLog {
+  id                String   @id @default(uuid())
+  vendorId          String
+  vendor            Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  
+  amount            Decimal  @default(200.00) // 200 ETB
+  chapaReference    String   @unique          // External reference from Chapa API
+  
+  activationDate    DateTime @default(now())
+  expiryDate        DateTime
+
+  createdAt         DateTime @default(now())
+
+  @@index([vendorId])
+  @@index([expiryDate])
+}
+
+// ==========================================
+// 3. LISTINGS & CATALOG MODULE
+// ==========================================
+
+model Listing {
+  id                 String   @id @default(uuid())
+  vendorId           String
+  vendor             Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  
+  title              String
+  description        String
+  price              Decimal  // List price in ETB
+  imageUrl           String
+  location           String
+  videoDemoUrl       String?  // Optional video product demonstration URL
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  // Poly-morphic extensions modeled as 1-to-1 relationships for database normalization
+  realEstateDetail   RealEstateDetail?
+  travelAgencyDetail TravelAgencyDetail?
+  fraudReports       SafetyReport[]
+
+  @@index([vendorId])
+  @@index([location])
+  @@index([price])
+}
+
+enum OldPropertyType {
+  RENT
+  SALE
+}
+
+model RealEstateDetail {
+  id            String          @id @default(uuid())
+  listingId     String          @unique
+  listing       Listing         @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  
+  rooms         Int
+  propertyType  OldPropertyType
+}
+
+model TravelAgencyDetail {
+  id                 String   @id @default(uuid())
+  listingId          String   @unique
+  listing            Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  
+  visaRequirements   String
+  countryDestination String
+
+  @@index([countryDestination])
+}
+
+// ==========================================
+// 4. GLOBAL SAFETY & ESCROW LOGIC
+// ==========================================
+
+model SafetyReport {
+  id                String       @id @default(uuid())
+  reporterId        String
+  reporter          User         @relation("ReporterRelation", fields: [reporterId], references: [id], onDelete: Cascade)
+  
+  reportedVendorId  String?
+  reportedVendor    Vendor?      @relation(fields: [reportedVendorId], references: [id], onDelete: Cascade)
+  
+  reportedListingId String?
+  reportedListing   Listing?     @relation(fields: [reportedListingId], references: [id], onDelete: Cascade)
+  
+  reason            String
+  screenshotUrl     String?      // Proof uploaded by the user
+
+  createdAt         DateTime     @default(now())
+
+  @@index([reporterId])
+  @@index([reportedVendorId])
+}
+
+model VendorRating {
+  id          String   @id @default(uuid())
+  vendorId    String
+  vendor      Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  
+  reviewerId  String
+  reviewer    User     @relation("ReviewerRelation", fields: [reviewerId], references: [id], onDelete: Cascade)
+  
+  ratingValue Int      // Value from 1 to 5 stars
+  reviewText  String?  @db.Text
+
+  createdAt   DateTime @default(now())
+
+  @@unique([vendorId, reviewerId]) // User can review a specific vendor only once
+  @@index([vendorId])
+  @@index([ratingValue])
+}
+
+// ==========================================
+// 5. SOCIAL UTILITIES MODULE
+// ==========================================
+
+// --- Traditional Rotating Edir/Equb (ዕቁብ) ---
+enum EqubStatus {
+  ACTIVE
+  COMPLETED
+}
+
+model EqubCircle {
+  id                 String             @id @default(uuid())
+  name               String
+  weeklyContribution Decimal            @default(500.00) // 500 ETB target contribution per week
+  poolPayout         Decimal            @default(3000.00) // Total accumulated rotational pay
+  currentRotation    Int                @default(1)
+  status             EqubStatus         @default(ACTIVE)
+
+  createdAt          DateTime           @default(now())
+  
+  members            EqubCircleMember[]
+
+  @@index([status])
+}
+
+model EqubCircleMember {
+  id         String     @id @default(uuid())
+  circleId   String
+  circle     EqubCircle @relation(fields: [circleId], references: [id], onDelete: Cascade)
+  
+  userId     String
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  joinedAt   DateTime   @default(now())
+
+  @@unique([circleId, userId]) // Avoid duplicating same person in the exact circle group
+  @@index([circleId])
+  @@index([userId])
+}
+
+// --- Weekend Mega Draws (ሎተሪ) ---
+enum LotteryStatus {
+  DRAFT
+  ACTIVE
+  DRAWING
+  COMPLETED
+  CANCELLED
+}
+
+model LotteryCampaign {
+  id           String          @id @default(uuid())
+  title        String
+  description  String?
+  ticketPrice  Decimal         @default(20.00) // Default: 20 ETB
+  prizeAmount  Decimal         @default(50000.00) // Default Jackpot: 50,000 ETB
+  totalTickets Int?
+  drawDate     DateTime
+  status       LotteryStatus   @default(DRAFT)
+  
+  createdAt    DateTime        @default(now())
+
+  tickets      LotteryTicket[]
+  draws        LotteryDraw[]
+  winners      LotteryWinner[]
+  auditLogs    LotteryAuditLog[]
+  analytics    LotteryAnalytics?
+
+  @@index([status])
+  @@index([drawDate])
+}
+
+model LotteryTicket {
+  id           String          @id @default(uuid())
+  campaignId   String
+  campaign     LotteryCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  
+  userId       String
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  ticketNumber String          @unique // E.g., EVZ-2026-000001
+  purchasedAt  DateTime        @default(now())
+
+  @@index([campaignId])
+  @@index([userId])
+}
+
+model LotteryDraw {
+  id         String          @id @default(uuid())
+  campaignId String
+  campaign   LotteryCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  
+  executedAt DateTime        @default(now())
+  completed  Boolean         @default(false)
+
+  @@index([campaignId])
+}
+
+model LotteryWinner {
+  id          String          @id @default(uuid())
+  campaignId  String
+  campaign    LotteryCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  ticketId    String
+  prizeAmount Decimal
+  
+  paid        Boolean         @default(false)
+  paidAt      DateTime?
+
+  @@index([campaignId])
+  @@index([userId])
+}
+
+model LotteryAuditLog {
+  id         String          @id @default(uuid())
+  campaignId String
+  campaign   LotteryCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  
+  event      String          // TicketPurchased, DrawStarting, WinnerAnnounced, PrizeCredited
+  metadata   Json?           // Additional flexible parameters
+  createdAt  DateTime        @default(now())
+
+  @@index([campaignId])
+}
+
+model LotteryAnalytics {
+  campaignId   String          @id
+  campaign     LotteryCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  
+  ticketsSold  Int             @default(0)
+  totalRevenue Decimal         @default(0.00)
+  totalPrizes  Decimal         @default(0.00)
+  participants Int             @default(0)
+}
+
+// --- Sunday Matchmaking Slots (ትዳር ማገናኛ) ---
+model SundayMatchmakingProfile {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  gender    String   // Gender identity for Sunday matchmaking filtering
+  age       Int
+  bio       String   @db.Text
+  imageUrl  String
+  location  String
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([gender])
+}
+
+// ==========================================
+// 6. DIRECT MESSAGING (CHAT SYSTEM) WORKSPACE
+// ==========================================
+
+model ChatRoom {
+  id               String    @id @default(uuid())
+  vendorId         String
+  vendor           Vendor    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  senderDigitalId  String    // Sender's Digital ID from verification
+  
+  createdAt        DateTime  @default(now())
+  messages         DirectMessage[]
+
+  @@unique([vendorId, senderDigitalId])
+  @@index([vendorId])
+  @@index([senderDigitalId])
+}
+
+model DirectMessage {
+  id               String    @id @default(uuid())
+  chatRoomId       String
+  chatRoom         ChatRoom  @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
+  
+  senderType       String    // "USER" or "VENDOR"
+  senderDigitalId  String?   // If sent by user
+  text             String    @db.Text
+  createdAt        DateTime  @default(now())
+
+  @@index([chatRoomId])
+  @@index([createdAt])
+}
+
+// ==========================================
+// 7. SUB-ADMIN RBAC & MANUAL PAYMENTS AUDITING
+// ==========================================
+
+model SubAdminPermission {
+  id               String   @id @default(uuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  canManageShops   Boolean  @default(false)
+  canManageHouses  Boolean  @default(false)
+  canManageLottery Boolean  @default(false)
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model ManualPayment {
+  id               String   @id @default(uuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  paymentChannel   String   // Telebirr, CBE Birr, Abyssinia Bank, Awash Birr, Dashen Bank
+  referenceNumber  String   @unique
+  offlineProofCode String?  // custom or physical voucher
+  status           String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([userId])
+  @@index([referenceNumber])
+  @@index([status])
+}
+
+// ==========================================
+// 8. VENDOR TIMELINE POSTS MODULE
+// ==========================================
+
+enum TimelinePostType {
+  PRODUCT
+  PROPERTY
+  JOB
+  ANNOUNCEMENT
+  PROMOTION
+}
+
+enum TimelineVisibility {
+  PUBLIC
+  FOLLOWERS_ONLY
+}
+
+model TimelinePost {
+  id            String             @id @default(uuid())
+  vendorId      String
+  type          TimelinePostType
+  title         String?
+  content       String?            @db.Text
+  visibility    TimelineVisibility
+  likesCount    Int                @default(0)
+  commentsCount Int                @default(0)
+  sharesCount   Int                @default(0)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  @@index([vendorId])
+  @@index([createdAt])
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  DOCUMENT
+}
+
+model TimelineMedia {
+  id           String    @id @default(uuid())
+  postId       String
+  mediaType    MediaType
+  mediaUrl     String
+  thumbnailUrl String?
+  sortOrder    Int       @default(0)
+
+  @@index([postId])
+}
+
+model TimelineLike {
+  id        String   @id @default(uuid())
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
+}
+
+model TimelineComment {
+  id        String   @id @default(uuid())
+  postId    String
+  userId    String
+  comment   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([postId])
+}
+
+model CommentLike {
+  id        String @id @default(uuid())
+  commentId String
+  userId    String
+
+  @@unique([commentId, userId])
+}
+
+model SavedPost {
+  id        String   @id @default(uuid())
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
+}
+
+model PostShare {
+  id        String   @id @default(uuid())
+  postId    String
+  userId    String?
+  createdAt DateTime @default(now())
+}
+
+model TimelineAnalytics {
+  postId   String @id
+  views    Int    @default(0)
+  reach    Int    @default(0)
+  likes    Int    @default(0)
+  comments Int    @default(0)
+  saves    Int    @default(0)
+  shares   Int    @default(0)
+}
+
+enum SearchEntityType {
+  PRODUCT
+  PROPERTY
+  JOB
+  VENDOR
+}
+
+model SearchIndex {
+  id          String           @id @default(uuid())
+  entityType  SearchEntityType
+  entityId    String
+  title       String
+  description String?          @db.Text
+  city        String?
+  category    String?
+  keywords    String           @db.Text
+  active      Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([entityType])
+  @@index([city])
+  @@index([category])
+}
+
+model SearchHistory {
+  id        String   @id @default(uuid())
+  userId    String
+  query     String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model SavedSearch {
+  id        String   @id @default(uuid())
+  userId    String
+  query     String
+  createdAt DateTime @default(now())
+}
+
+model TrendingSearch {
+  id          String   @id @default(uuid())
+  keyword     String
+  searchCount Int      @default(0)
+  updatedAt   DateTime @updatedAt
+
+  @@index([searchCount])
+}
+
+model SearchAnalytics {
+  id          String   @id @default(uuid())
+  keyword     String
+  resultCount Int
+  clickCount  Int      @default(0)
+  createdAt   DateTime @default(now())
+}
+
+model UserInterest {
+  id        String   @id @default(uuid())
+  userId    String
+  category  String
+  score     Float    @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, category])
+}
+
+enum ConversationType {
+  PRODUCT
+  PROPERTY
+  JOB
+  GENERAL
+}
+
+model Conversation {
+  id             String           @id @default(uuid())
+  type           ConversationType
+  buyerId        String
+  vendorId       String
+  lastMessageAt  DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([buyerId])
+  @@index([vendorId])
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  VIDEO
+  FILE
+}
+
+model Message {
+  id             String      @id @default(uuid())
+  conversationId String
+  senderId       String
+  messageType    MessageType
+  content        String?
+  mediaUrl       String?
+  isRead         Boolean     @default(false)
+  createdAt      DateTime    @default(now())
+
+  @@index([conversationId])
+  @@index([senderId])
+}
+
+model MessageRead {
+  id        String   @id @default(uuid())
+  messageId String
+  userId    String
+  readAt    DateTime @default(now())
+
+  @@unique([messageId, userId])
+}
+
+model ChatAttachment {
+  id        String   @id @default(uuid())
+  messageId String
+  fileName  String
+  fileUrl   String
+  fileSize  Int?
+  createdAt DateTime @default(now())
+}
+
+model UserPresence {
+  userId   String    @id
+  online   Boolean   @default(false)
+  lastSeen DateTime?
+}
+
+enum NotificationType {
+  NEW_MESSAGE
+  NEW_FOLLOWER
+  NEW_ORDER
+  ORDER_STATUS
+  PAYMENT_SUCCESS
+  PAYMENT_FAILED
+  REVIEW_RECEIVED
+  JOB_APPLICATION
+  PROPERTY_INQUIRY
+  SUBSCRIPTION_EXPIRY
+  ACCOUNT_SUSPENDED
+  SYSTEM_ANNOUNCEMENT
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+model Notification {
+  id        String             @id @default(uuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  data      String?
+  status    NotificationStatus @default(PENDING)
+  readAt    DateTime?
+  createdAt DateTime           @default(now())
+
+  @@index([userId])
+  @@index([type])
+  @@index([status])
+}
+
+model DeviceToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  platform  String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model NotificationPreference {
+  userId           String  @id
+  pushEnabled      Boolean @default(true)
+  emailEnabled     Boolean @default(true)
+  smsEnabled       Boolean @default(false)
+  marketingEnabled Boolean @default(true)
+}
+
+model NotificationAnalytics {
+  id               String   @id @default(uuid())
+  notificationType String
+  sentCount        Int      @default(0)
+  deliveredCount   Int      @default(0)
+  openedCount      Int      @default(0)
+  createdAt        DateTime @default(now())
+}
+
+enum DeliveryStatus {
+  PENDING
+  ASSIGNED
+  PICKED_UP
+  IN_TRANSIT
+  ARRIVED
+  DELIVERED
+  CANCELLED
+  FAILED
+}
+
+model Driver {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  fullName     String
+  phone        String
+  vehicleType  String
+  vehiclePlate String?
+  active       Boolean  @default(true)
+  verified     Boolean  @default(false)
+  rating       Float    @default(0)
+  createdAt    DateTime @default(now())
+}
+
+model Delivery {
+  id               String         @id @default(uuid())
+  orderId          String         @unique
+  driverId         String?
+  status           DeliveryStatus
+  pickupAddress    String
+  deliveryAddress  String
+  deliveryFee      Float
+  estimatedMinutes Int?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([driverId])
+  @@index([status])
+}
+
+model DriverLocation {
+  id        String   @id @default(uuid())
+  driverId  String
+  latitude  Float
+  longitude Float
+  updatedAt DateTime @updatedAt
+
+  @@index([driverId])
+}
+
+model DeliveryEvent {
+  id         String         @id @default(uuid())
+  deliveryId String
+  status     DeliveryStatus
+  note       String?
+  createdAt  DateTime       @default(now())
+
+  @@index([deliveryId])
+}
+
+model DeliveryProof {
+  id                String   @id @default(uuid())
+  deliveryId        String
+  photoUrl          String?
+  customerSignature String?
+  deliveredAt       DateTime @default(now())
+}
+
+model DeliveryConfirmation {
+  id          String    @id @default(uuid())
+  deliveryId  String    @unique
+  customerId  String
+  confirmed   Boolean   @default(false)
+  confirmedAt DateTime?
+}
+
+model DriverAnalytics {
+  driverId            String @id
+  deliveriesCompleted Int    @default(0)
+  deliveriesCancelled Int    @default(0)
+  totalRevenue        Float  @default(0)
+  rating              Float  @default(0)
+}
+
+enum FraudReportType {
+  PRODUCT_NOT_DELIVERED
+  FAKE_PRODUCT
+  SCAM
+  PAYMENT_ISSUE
+  ABUSE
+  FAKE_PROPERTY
+  FAKE_JOB
+  OTHER
+}
+
+enum ReportStatus {
+  PENDING
+  UNDER_REVIEW
+  ACTION_TAKEN
+  REJECTED
+  CLOSED
+}
+
+model FraudReport {
+  id          String          @id @default(uuid())
+  reporterId  String
+  vendorId    String?
+  orderId     String?
+  reportType  FraudReportType
+  description String
+  status      ReportStatus    @default(PENDING)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([vendorId])
+  @@index([status])
+}
+
+model ReportEvidence {
+  id         String   @id @default(uuid())
+  reportId   String
+  fileUrl    String
+  fileType   String
+  uploadedAt DateTime @default(now())
+
+  @@index([reportId])
+}
+
+model Investigation {
+  id          String   @id @default(uuid())
+  reportId    String   @unique
+  adminId     String
+  notes       String?
+  resolution  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model VendorRiskScore {
+  vendorId     String   @id
+  score        Float    @default(0)
+  reportsCount Int      @default(0)
+  suspensions  Int      @default(0)
+  updatedAt    DateTime @updatedAt
+}
+
+enum SuspensionReason {
+  FRAUD
+  SCAM
+  FAKE_LISTING
+  PAYMENT_ABUSE
+  POLICY_VIOLATION
+}
+
+model VendorSuspension {
+  id          String           @id @default(uuid())
+  vendorId    String
+  reason      SuspensionReason
+  suspendedBy String
+  startDate   DateTime
+  endDate     DateTime?
+  permanent   Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+}
+
+enum TrustLevel {
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
+}
+
+model VendorTrust {
+  vendorId         String     @id
+  level            TrustLevel
+  successfulOrders Int        @default(0)
+  disputeRate      Float      @default(0)
+  updatedAt        DateTime   @updatedAt
+}
+
+model AdminQueue {
+  id            String   @id @default(uuid())
+  reportId      String
+  priority      Int      @default(1)
+  assignedAdmin String?
+  status        String
+  createdAt     DateTime @default(now())
+
+  @@index([priority])
+}
+
+// ==========================================
+// 9. ROLE-BASED ACCESS CONTROL & AUDITING
+// ==========================================
+
+enum AdminRole {
+  SUPER_ADMIN
+  KYC_ADMIN
+  SUPPORT_ADMIN
+  FINANCE_ADMIN
+  CONTENT_ADMIN
+  MODERATOR
+}
+
+model AdminUser {
+  id        String    @id @default(uuid())
+  email     String    @unique
+  password  String
+  role      AdminRole
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now())
+}
+
+model AdminPermission {
+  id         String @id @default(uuid())
+  adminId    String
+  permission String
+
+  @@index([adminId])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  adminId    String
+  action     String
+  entityType String
+  entityId   String
+  oldData    Json?
+  newData    Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  @@index([adminId])
+  @@index([entityType])
+}
+
+model SystemAnnouncement {
+  id        String   @id @default(uuid())
+  title     String
+  content   String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model DashboardMetric {
+  id          String   @id @default(uuid())
+  metricKey   String   @unique
+  metricValue Decimal
+  updatedAt   DateTime @updatedAt
+}
+
+enum AnalyticsPeriod {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+model RevenueAnalytics {
+  id                  String          @id @default(uuid())
+  period              AnalyticsPeriod
+  totalRevenue        Decimal         @default(0)
+  marketplaceRevenue  Decimal         @default(0)
+  subscriptionRevenue Decimal         @default(0)
+  createdAt           DateTime        @default(now())
+
+  @@index([period])
+}
+
+model UserAnalytics {
+  id          String   @id @default(uuid())
+  totalUsers  Int      @default(0)
+  activeUsers Int      @default(0)
+  newUsers    Int      @default(0)
+  vendors     Int      @default(0)
+  buyers      Int      @default(0)
+  updatedAt   DateTime @updatedAt
+}
+
+model MarketplaceAnalytics {
+  id             String   @id @default(uuid())
+  totalProducts  Int      @default(0)
+  activeProducts Int      @default(0)
+  orders         Int      @default(0)
+  sales          Decimal  @default(0)
+  updatedAt      DateTime @updatedAt
+}
+
+model PropertyAnalytics {
+  id               String   @id @default(uuid())
+  totalProperties  Int      @default(0)
+  activeProperties Int      @default(0)
+  inquiries        Int      @default(0)
+  updatedAt        DateTime @updatedAt
+}
+
+model JobAnalytics {
+  id           String   @id @default(uuid())
+  totalJobs    Int      @default(0)
+  activeJobs   Int      @default(0)
+  applications Int      @default(0)
+  updatedAt    DateTime @updatedAt
+}
+
+model VendorPerformance {
+  vendorId       String   @id
+  profileViews   Int      @default(0)
+  followers      Int      @default(0)
+  orders         Int      @default(0)
+  revenue        Decimal  @default(0)
+  conversionRate Float    @default(0)
+  updatedAt      DateTime @updatedAt
+}
+
+model SearchTrend {
+  id        String   @id @default(uuid())
+  keyword   String
+  searches  Int      @default(0)
+  clicks    Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@index([keyword])
+}
+
+
+enum MediaOwnerType {
+  USER
+  VENDOR
+  PRODUCT
+  PROPERTY
+  JOB
+  CHAT
+  KYC
+}
+
+model MediaAsset {
+  id           String         @id @default(uuid())
+  ownerType    MediaOwnerType
+  ownerId      String
+  mediaType    MediaType
+  originalName String
+  fileUrl      String
+  thumbnailUrl String?
+  mimeType     String
+  fileSize     Int
+  uploadedBy   String
+  createdAt    DateTime       @default(now())
+
+  @@index([ownerType])
+  @@index([ownerId])
+}
+
+model KYC {
+  id              String      @id @default(uuid())
+  userId          String      @unique
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nationalId      String      @default("")
+  selfieUrl       String      @default("")
+  documentUrl     String?
+  status          KYCStatus   @default(PENDING)
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  rejectionReason String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([status])
+}
+
+model SubscriptionPlan {
+  id           String         @id @default(uuid())
+  name         String
+  description  String?
+  price        Decimal
+  currency     String         @default("ETB")
+  durationDays Int
+  active       Boolean        @default(true)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @default(now()) @updatedAt
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id          String             @id @default(uuid())
+  userId      String
+  vendorId    String?
+  planId      String
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vendor      Vendor?            @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  plan        SubscriptionPlan   @relation(fields: [planId], references: [id], onDelete: Cascade)
+  status      SubscriptionStatus @default(PENDING)
+  amount      Decimal
+  startsAt    DateTime
+  expiresAt   DateTime
+  graceEndsAt DateTime?
+  autoRenew   Boolean            @default(false)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @default(now()) @updatedAt
+
+  @@index([status])
+  @@index([expiresAt])
+}
+
+model VendorSubscription {
+  id          String             @id @default(uuid())
+  vendorId    String
+  planId      String
+  status      SubscriptionStatus @default(PENDING)
+  amount      Decimal
+  startsAt    DateTime
+  expiresAt   DateTime
+  graceEndsAt DateTime?
+  autoRenew   Boolean            @default(false)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@index([vendorId])
+  @@index([status])
+  @@index([expiresAt])
+}
+
+model SubscriptionPayment {
+  id             String          @id @default(uuid())
+  subscriptionId String
+  provider       PaymentProvider
+  transactionId  String          @unique
+  amount         Decimal
+  paidAt         DateTime
+  invoiceNumber  String          @unique
+  status         String
+  rawResponse    Json?
+  createdAt      DateTime        @default(now())
+
+  @@index([transactionId])
+}
+
+model Invoice {
+  id            String   @id @default(uuid())
+  invoiceNumber String   @unique
+  vendorId      String
+  amount        Decimal
+  currency      String
+  status        String
+  pdfUrl        String?
+  createdAt     DateTime @default(now())
+
+  @@index([vendorId])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model OtpCode {
+  id        String   @id @default(uuid())
+  phone     String
+  code      String
+  expiresAt DateTime
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([phone])
+}
+
+model UserProfile {
+  id        String    @id @default(uuid())
+  userId    String    @unique
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  avatarUrl String?
+  bio       String?
+  city      String?
+  country   String?
+  gender    String?
+  birthDate DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model UserSettings {
+  id                 String   @id @default(uuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  language           String   @default("am")
+  darkMode           Boolean  @default(false)
+  pushNotifications  Boolean  @default(true)
+  emailNotifications Boolean  @default(true)
+  smsNotifications   Boolean  @default(true)
+  updatedAt          DateTime @updatedAt
+}
+
+model VendorFollow {
+  id        String   @id @default(uuid())
+  userId    String
+  vendorId  String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, vendorId])
+  @@index([vendorId])
+}
+
+model FavoriteProduct {
+  id        String   @id @default(uuid())
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+}
+
+model FavoriteProperty {
+  id         String   @id @default(uuid())
+  userId     String
+  propertyId String
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, propertyId])
+}
+
+model SavedJob {
+  id        String   @id @default(uuid())
+  userId    String
+  jobId     String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, jobId])
+}
+
+model UserActivity {
+  id         String   @id @default(uuid())
+  userId     String
+  action     String
+  entityType String
+  entityId   String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+}
+
+enum StoreStatus {
+  DRAFT
+  PENDING
+  ACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+model VendorStore {
+  id             String             @id @default(uuid())
+  vendorId       String             @unique
+  storeName      String
+  slug           String             @unique
+  logoUrl        String?
+  coverUrl       String?
+  description    String?
+  phone          String?
+  email          String?
+  address        String?
+  city           String?
+  latitude       Float?
+  longitude      Float?
+  status         StoreStatus        @default(PENDING)
+  verification   VerificationStatus @default(PENDING)
+  averageRating  Float              @default(0)
+  totalReviews   Int                @default(0)
+  totalFollowers Int                @default(0)
+  totalProducts  Int                @default(0)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@index([city])
+  @@index([status])
+}
+
+model StoreWorkingHour {
+  id        String  @id @default(uuid())
+  storeId   String
+  dayOfWeek Int
+  openTime  String
+  closeTime String
+  closed    Boolean @default(false)
+
+  @@index([storeId])
+}
+
+model VendorGallery {
+  id        String    @id @default(uuid())
+  vendorId  String
+  mediaUrl  String
+  mediaType MediaType
+  createdAt DateTime  @default(now())
+
+  @@index([vendorId])
+}
+
+model VendorSocialLink {
+  id       String @id @default(uuid())
+  vendorId String
+  platform String
+  url      String
+
+  @@index([vendorId])
+}
+
+model StoreSetting {
+  id               String   @id @default(uuid())
+  vendorId         String   @unique
+  allowMessages    Boolean  @default(true)
+  allowReviews     Boolean  @default(true)
+  autoAcceptOrders Boolean  @default(false)
+  vacationMode     Boolean  @default(false)
+  updatedAt        DateTime @updatedAt
+}
+
+enum KycStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum IdentityDocumentType {
+  NATIONAL_ID
+  PASSPORT
+  DRIVING_LICENSE
+  BUSINESS_LICENSE
+}
+
+model VendorKyc {
+  id                 String               @id @default(uuid())
+  vendorId           String               @unique
+  documentType       IdentityDocumentType
+  documentNumber     String
+  fullName           String
+  dateOfBirth        DateTime?
+  nationality        String?
+  selfieImageUrl     String
+  documentFrontUrl   String
+  documentBackUrl    String?
+  businessLicenseUrl String?
+  status             KycStatus            @default(DRAFT)
+  submittedAt        DateTime?
+  reviewedAt         DateTime?
+  reviewedBy         String?
+  rejectionReason    String?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  @@index([status])
+  @@index([vendorId])
+}
+
+model KycReviewHistory {
+  id        String   @id @default(uuid())
+  kycId     String
+  adminId   String
+  action    String
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@index([kycId])
+}
+
+// ==========================================
+// 10. MARKETPLACE MODULE MODELS
+// ==========================================
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  OUT_OF_STOCK
+  HIDDEN
+  ARCHIVED
+}
+
+enum ProductCondition {
+  NEW
+  USED
+  REFURBISHED
+}
+
+model Category {
+  id        String   @id @default(uuid())
+  parentId  String?
+  name      String
+  slug      String   @unique
+  iconUrl   String?
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([parentId])
+}
+
+model Brand {
+  id       String  @id @default(uuid())
+  name     String
+  slug     String  @unique
+  logoUrl  String?
+  verified Boolean @default(false)
+}
+
+model Product {
+  id            String           @id @default(uuid())
+  vendorId      String
+  categoryId    String
+  brandId       String?
+  title         String
+  slug          String           @unique
+  description   String
+  sku           String           @unique
+  price         Decimal
+  discountPrice Decimal?
+  currency      String           @default("ETB")
+  quantity      Int
+  status        ProductStatus    @default(DRAFT)
+  condition     ProductCondition @default(NEW)
+  averageRating Float            @default(0)
+  totalReviews  Int              @default(0)
+  totalSales    Int              @default(0)
+  featured      Boolean          @default(false)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@index([vendorId])
+  @@index([categoryId])
+  @@index([status])
+  @@index([price])
+}
+
+model ProductImage {
+  id           String  @id @default(uuid())
+  productId    String
+  imageUrl     String
+  sortOrder    Int     @default(0)
+  primaryImage Boolean @default(false)
+
+  @@index([productId])
+}
+
+model ProductVideo {
+  id           String   @id @default(uuid())
+  productId    String
+  videoUrl     String
+  thumbnailUrl String?
+  createdAt    DateTime @default(now())
+
+  @@index([productId])
+}
+
+model ProductVariant {
+  id        String   @id @default(uuid())
+  productId String
+  color     String?
+  size      String?
+  sku       String   @unique
+  quantity  Int
+  price     Decimal?
+}
+
+model InventoryLog {
+  id             String   @id @default(uuid())
+  productId      String
+  quantityBefore Int
+  quantityAfter  Int
+  changeReason   String
+  createdAt      DateTime @default(now())
+
+  @@index([productId])
+}
+
+model Cart {
+  id        String   @id @default(uuid())
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CartItem {
+  id        String  @id @default(uuid())
+  cartId    String
+  productId String
+  quantity  Int
+  variantId String?
+
+  @@index([cartId])
+}
+
+model Wishlist {
+  id        String   @id @default(uuid())
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+}
+
+// ==========================================
+// 11. ORDERS & ESCROW MODULE MODELS
+// ==========================================
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  PROCESSING
+  PACKED
+  SHIPPED
+  OUT_FOR_DELIVERY
+  DELIVERED
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+model Order {
+  id            String        @id @default(uuid())
+  orderNumber   String        @unique
+  buyerId       String
+  vendorId      String
+  status        OrderStatus   @default(PENDING_PAYMENT)
+  paymentStatus PaymentStatus @default(PENDING)
+  subtotal      Decimal
+  deliveryFee   Decimal
+  tax           Decimal?
+  discount      Decimal?
+  total         Decimal
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([buyerId])
+  @@index([vendorId])
+  @@index([status])
+}
+
+model OrderItem {
+  id         String   @id @default(uuid())
+  orderId    String
+  productId  String
+  variantId  String?
+  quantity   Int
+  unitPrice  Decimal
+  totalPrice Decimal
+
+  @@index([orderId])
+}
+
+model ShippingAddress {
+  id        String   @id @default(uuid())
+  orderId   String   @unique
+  fullName  String
+  phone     String
+  city      String
+  subCity   String?
+  kebele    String?
+  landmark  String?
+  latitude  Float?
+  longitude Float?
+  createdAt DateTime @default(now())
+}
+
+model OrderTracking {
+  id        String         @id @default(uuid())
+  orderId   String
+  status    DeliveryStatus
+  message   String
+  latitude  Float?
+  longitude Float?
+  createdAt DateTime       @default(now())
+
+  @@index([orderId])
+}
+
+model EscrowTransaction {
+  id         String    @id @default(uuid())
+  orderId    String    @unique
+  amount     Decimal
+  released   Boolean   @default(false)
+  releasedAt DateTime?
+  createdAt  DateTime  @default(now())
+}
+
+model ReturnRequest {
+  id          String   @id @default(uuid())
+  orderId     String
+  reason      String
+  description String?
+  status      String
+  createdAt   DateTime @default(now())
+
+  @@index([orderId])
+}
+
+model Refund {
+  id          String    @id @default(uuid())
+  orderId     String
+  amount      Decimal
+  reason      String
+  status      String
+  processedAt DateTime?
+  createdAt  DateTime  @default(now())
+}
+
+// ==========================================
+// 12. WALLET & PAYMENT MODULE MODELS
+// ==========================================
+
+enum WalletType {
+  BUYER
+  VENDOR
+  PLATFORM
+}
+
+enum WalletStatus {
+  ACTIVE
+  FROZEN
+  SUSPENDED
+  CLOSED
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAW
+  PURCHASE
+  REFUND
+  ESCROW_HOLD
+  ESCROW_RELEASE
+  COMMISSION
+  PAYOUT
+  TRANSFER
+}
+
+model Wallet {
+  id               String       @id @default(uuid())
+  userId           String       @unique
+  type             WalletType
+  status           WalletStatus @default(ACTIVE)
+  balance          Decimal      @default(0)
+  availableBalance Decimal      @default(0)
+  heldBalance      Decimal      @default(0)
+  currency         String       @default("ETB")
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@index([userId])
+}
+
+model WalletTransaction {
+  id            String          @id @default(uuid())
+  walletId      String
+  type          TransactionType
+  amount        Decimal
+  balanceBefore Decimal
+  balanceAfter  Decimal
+  reference     String          @unique
+  description   String?
+  createdAt     DateTime        @default(now())
+
+  @@index([walletId])
+  @@index([type])
+}
+
+model VendorPayout {
+  id                   String    @id @default(uuid())
+  vendorId             String
+  amount               Decimal
+  status               String
+  bankName             String?
+  accountNumber        String?
+  transactionReference String?
+  processedAt          DateTime?
+  createdAt            DateTime  @default(now())
+
+  @@index([vendorId])
+}
+
+// ==========================================
+// 13. REAL ESTATE MODULE MODELS
+// ==========================================
+
+enum PropertyStatus {
+  DRAFT
+  PENDING
+  ACTIVE
+  SOLD
+  RENTED
+  SUSPENDED
+  ARCHIVED
+}
+
+enum PropertyType {
+  HOUSE
+  APARTMENT
+  CONDOMINIUM
+  VILLA
+  LAND
+  COMMERCIAL
+  OFFICE
+  WAREHOUSE
+}
+
+enum ListingType {
+  SALE
+  RENT
+}
+
+model Property {
+  id            String         @id @default(uuid())
+  vendorId      String
+  title         String
+  slug          String         @unique
+  description   String
+  propertyType  PropertyType
+  listingType   ListingType
+  status        PropertyStatus @default(DRAFT)
+  price         Decimal
+  currency      String         @default("ETB")
+  bedrooms      Int?
+  bathrooms     Int?
+  parkingSpaces Int?
+  sizeSqm       Float?
+  yearBuilt     Int?
+  city          String
+  subCity       String?
+  address       String?
+  latitude      Float
+  longitude     Float
+  featured      Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([vendorId])
+  @@index([propertyType])
+  @@index([listingType])
+  @@index([city])
+  @@index([status])
+}
+
+model PropertyImage {
+  id           String  @id @default(uuid())
+  propertyId   String
+  imageUrl     String
+  sortOrder    Int     @default(0)
+  primaryImage Boolean @default(false)
+}
+
+model PropertyVideo {
+  id           String  @id @default(uuid())
+  propertyId   String
+  videoUrl     String
+  thumbnailUrl String?
+}
+
+model PropertyAmenity {
+  id         String @id @default(uuid())
+  propertyId String
+  amenity    String
+}
+
+model PropertyInquiry {
+  id         String   @id @default(uuid())
+  propertyId String
+  buyerId    String
+  message    String
+  status     String
+  createdAt  DateTime @default(now())
+}
+
+model PropertyVisit {
+  id         String   @id @default(uuid())
+  propertyId String
+  buyerId    String
+  visitDate  DateTime
+  status     String
+  note       String?
+}
+
+
+

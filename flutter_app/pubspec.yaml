@@ -1,0 +1,23 @@
+name: every_zone_flutter
+description: "Phase 1 production-grade UI template for the Every-Zone Premium Super App crafted in Material 3 and Dart 3."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Standard packages for production
+  cupertino_icons: ^1.0.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true

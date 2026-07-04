@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+.tilet-border {
+  background-image: 
+    linear-gradient(45deg, #1E3A1A 25%, transparent 25%),
+    linear-gradient(-45deg, #1E3A1A 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #C5A059 75%),
+    linear-gradient(-45deg, transparent 75%, #C5A059 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+}
+
+.shadow-top {
+  box-shadow: 0 -4px 6px -1px rgba(0,0,0,0.1);
+}
+
+.chapa-gradient {
+  background: linear-gradient(135deg, #00C896 0%, #00966C 100%);
+}
+

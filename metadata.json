@@ -1,0 +1,6 @@
+{
+  "name": "Every-zone Super App",
+  "description": "A beautiful, fully operational single-file prototype of the Every-zone (ኤቭሪ-ዞን) Super App with interactive e-commerce, real estate, passport queue, and social utility features crafted with a premium Ethiopian aesthetic.",
+  "requestFramePermissions": ["geolocation", "microphone", "camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
