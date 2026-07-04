@@ -5,7 +5,8 @@ import {
   Video, Play, Pause, User, Plus, ArrowLeft, Clock, Sparkles, Lock, 
   RefreshCw, Award, BookOpen, UserCheck, Flame, ShieldAlert, Sparkle, FileText,
   MessageCircle, Bookmark, Settings, Phone, Send, X, Volume2, Mic, MicOff, VolumeX, Share2,
-  Cpu, Database, TrendingUp, History, SlidersHorizontal, Filter, Check, Camera, Ticket
+  Cpu, Database, TrendingUp, History, SlidersHorizontal, Filter, Check, Camera, Ticket, QrCode,
+  Moon, Sun, Globe
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { SimulatedVideoPlayer } from './components/SimulatedVideoPlayer';
@@ -20,6 +21,7 @@ import { NotificationCenter } from './components/NotificationCenter';
 import { WalletPaymentsHub } from './components/WalletPaymentsHub';
 import { EthiopiaPassportHub } from './components/EthiopiaPassportHub';
 import { OnboardingWelcomeCarousel } from './components/OnboardingWelcomeCarousel';
+import { QRCodeScanner } from './components/QRCodeScanner';
 import { SplashScreen } from './components/SplashScreen';
 import { AuthScreen } from './components/AuthScreen';
 import { InAppBookingCalendar } from './components/InAppBookingCalendar';
@@ -34,6 +36,11 @@ import OverseasEmploymentModule from './components/OverseasEmploymentModule';
 import { VendorDashboardHub } from './components/VendorDashboardHub';
 import { OrderTrackingHub } from './components/OrderTrackingHub';
 import { WishlistCollectionsHub } from './components/WishlistCollectionsHub';
+import { V9SuperSuite } from './components/V9SuperSuite';
+import { EveryzoneMonetizationEngine } from './components/EveryzoneMonetizationEngine';
+import { SettingsScreen } from './screens/SettingsScreen';
+import { HousesScreen } from './screens/HousesScreen';
+import { AgenciesScreen } from './screens/AgenciesScreen';
 
 
 // ==========================================
@@ -1190,7 +1197,20 @@ export default function App() {
   });
 
   const [activeTab, setActiveTab] = useState<'shop' | 'houses' | 'agencies' | 'lottery' | 'matchmaking' | 'settings'>('shop');
-  const [activeDevModule, setActiveDevModule] = useState<'none' | 'ai' | 'logistics' | 'adv' | 'admin' | 'wallet' | 'passport' | 'devops' | 'sre' | 'vendor_dashboard' | 'order_tracking' | 'wishlist'>('none');
+  const [activeDevModule, setActiveDevModule] = useState<'none' | 'ai' | 'logistics' | 'adv' | 'admin' | 'wallet' | 'passport' | 'devops' | 'sre' | 'vendor_dashboard' | 'order_tracking' | 'wishlist' | 'v9_suite' | 'monetization'>('none');
+
+  // --- EMERGENCY BANNER CONFIGURATION STATE ---
+  const [emergencyBanner, setEmergencyBanner] = useState<{
+    active: boolean;
+    type: 'MAINTENANCE' | 'ALERT' | 'HOLIDAY' | 'FEATURE';
+    textEn: string;
+    textAm: string;
+  }>({
+    active: true,
+    type: 'ALERT',
+    textEn: '🚨 ESCROW ALERT: CBE Banking Gateways maintenance on Sunday. Settling lag up to 5 mins.',
+    textAm: '🚨 አስቸኳይ ማሳሰቢያ፡ የኢትዮጵያ ንግድ ባንክ ሲስተም ጥገና ምክንያት ክፍያዎች ለ5 ደቂቃ ሊዘገዩ ይችላሉ።'
+  });
 
   // --- CAMERA PERMISSION STATES & HELPER ---
   const [showCameraDeniedModal, setShowCameraDeniedModal] = useState(false);
@@ -1307,6 +1327,121 @@ export default function App() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchLatency, setSearchLatency] = useState(0);
   const [aiChatResponse, setAiChatResponse] = useState<string | null>(null);
+
+  // QR & Image Search Modal States
+  const [isQrSearchOpen, setIsQrSearchOpen] = useState(false);
+  const [isImageSearchOpen, setIsImageSearchOpen] = useState(false);
+  const [imageSearchFile, setImageSearchFile] = useState<string | null>(null);
+  const [imageSearchLoading, setImageSearchLoading] = useState(false);
+  const [imageSearchExplanation, setImageSearchExplanation] = useState<{en: string, am: string} | null>(null);
+
+  const handleImageSearch = async (base64Image: string) => {
+    setImageSearchLoading(true);
+    setImageSearchExplanation(null);
+    try {
+      const res = await fetch("/api/search/image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageBase64: base64Image })
+      });
+      const data = await res.json();
+      if (data.status === "success") {
+        setSearchResults(data.results || []);
+        setImageSearchExplanation({
+          en: data.explanationEn || "Visual match completed successfully.",
+          am: data.explanationAm || "ምስላዊ ፍለጋ በተሳካ ሁኔታ ተጠናቋል።"
+        });
+        setGlobalSearchQuery(""); // Clear standard search string
+        setIsGlobalSearchOpen(true); // Ensure unified search index is open
+        setIsImageSearchOpen(false); // Close image search panel
+      } else {
+        alert("Image search failed: " + (data.error || "Unknown error"));
+      }
+    } catch (err) {
+      console.error("Image search failed", err);
+      alert("Error sending image search request.");
+    } finally {
+      setImageSearchLoading(false);
+    }
+  };
+
+  const handleQRSearchSuccess = (result: any) => {
+    let rawText = "";
+    if (result.type === "MARKETPLACE_VENDOR" && result.data?.vendorId) {
+      rawText = result.data.vendorId;
+    } else if (result.type === "MARKETPLACE_PRODUCT" && result.data?.productId) {
+      rawText = result.data.productId;
+    } else if (result.data?.reference) {
+      rawText = result.data.reference;
+    } else {
+      rawText = result.data?.ticketId || result.data?.faydaId || JSON.stringify(result.data);
+    }
+
+    const normText = rawText.trim().toLowerCase();
+    
+    if (normText === "v1" || normText === "v-1" || normText.includes("vendor=v1") || normText.includes("vendor/v1")) {
+      setViewedVendorId("v1");
+      setGlobalSearchQuery("");
+      setIsGlobalSearchOpen(false);
+      alert(lang === 'en' ? "🔍 QR Merchant Match: Makeda Royal Weaving (v1)" : "🔍 የሻጭ QR ተዛማጅ፡ ማከዳ አልባሳት (v1)");
+    } else if (normText === "v2" || normText === "v-2" || normText.includes("vendor=v2") || normText.includes("vendor/v2")) {
+      setViewedVendorId("v2");
+      setGlobalSearchQuery("");
+      setIsGlobalSearchOpen(false);
+      alert(lang === 'en' ? "🔍 QR Merchant Match: Makeda Specialty Coffee (v2)" : "🔍 የሻጭ QR ተዛማጅ፡ ማከዳ ቡና (v2)");
+    } else if (normText === "v4" || normText.includes("vendor=v4") || normText.includes("vendor/v4")) {
+      setViewedVendorId("v4");
+      setGlobalSearchQuery("");
+      setIsGlobalSearchOpen(false);
+      alert(lang === 'en' ? "🔍 QR Merchant Match: Aura Bole Premium Properties (v4)" : "🔍 የሻጭ QR ተዛማጅ፡ አውራ ቤቶች (v4)");
+    } else if (normText === "v7" || normText.includes("vendor=v7") || normText.includes("vendor/v7")) {
+      setViewedVendorId("v7");
+      setGlobalSearchQuery("");
+      setIsGlobalSearchOpen(false);
+      alert(lang === 'en' ? "🔍 QR Merchant Match: Gigi International Placements (v7)" : "🔍 የሻጭ QR ተዛማጅ፡ ጂጂ ወኪል (v7)");
+    } else if (normText === "l1" || normText.includes("product=l1") || normText.includes("product/l1")) {
+      const item = listings.find(l => l.id === "l1");
+      if (item) {
+        setViewedVendorId(item.vendorId);
+        setGlobalSearchQuery("");
+        setIsGlobalSearchOpen(false);
+        alert(lang === 'en' 
+          ? `🔍 QR Product: "${item.title}". Redirecting to owner: ${item.vendorName}!`
+          : `🔍 የምርት QR ኮድ፡ "${item.titleAm || item.title}"። ወደ ምርቱ ባለቤት መራዎት፡ ${item.vendorNameAm || item.vendorName}!`
+        );
+      }
+    } else if (normText === "l2" || normText.includes("product=l2") || normText.includes("product/l2")) {
+      const item = listings.find(l => l.id === "l2");
+      if (item) {
+        setViewedVendorId(item.vendorId);
+        setGlobalSearchQuery("");
+        setIsGlobalSearchOpen(false);
+        alert(lang === 'en' 
+          ? `🔍 QR Product: "${item.title}". Redirecting to owner: ${item.vendorName}!`
+          : `🔍 የምርት QR ኮድ፡ "${item.titleAm || item.title}"። ወደ ምርቱ ባለቤት መራዎት፡ ${item.vendorNameAm || item.vendorName}!`
+        );
+      }
+    } else if (normText === "l3_iphone" || normText.includes("l3_iphone")) {
+      const item = listings.find(l => l.id === "l3_iphone");
+      if (item) {
+        setViewedVendorId(item.vendorId);
+        setGlobalSearchQuery("");
+        setIsGlobalSearchOpen(false);
+        alert(lang === 'en' 
+          ? `🔍 QR Product: "${item.title}". Redirecting to owner: ${item.vendorName}!`
+          : `🔍 የምርት QR ኮድ፡ "${item.titleAm || item.title}"። ወደ ምርቱ ባለቤት መራዎት፡ ${item.vendorNameAm || item.vendorName}!`
+        );
+      }
+    } else {
+      setGlobalSearchQuery(rawText);
+      fetchSearchResults(rawText);
+      setIsGlobalSearchOpen(true);
+      alert(lang === 'en' 
+        ? `🔍 QR Decoded: "${rawText}". Searching Every-zone marketplace...`
+        : `🔍 የQR ኮድ ተነቧል፡ "${rawText}"። በገበያ ላይ በመፈለግ ላይ...`
+      );
+    }
+  };
 
   const handleAiChatSearch = (term: string) => {
     setSearchLoading(true);
@@ -3526,6 +3661,23 @@ Thank you for supporting digital commerce in Ethiopia!
         {!showSplash && !showOnboarding && isAuthenticated && (
           <>
             <TraditionalTilitBanner />
+            {emergencyBanner.active && (
+              <div className="bg-gradient-to-r from-red-650 to-amber-600 text-white text-[9.5px] px-3.5 py-2 flex items-center justify-between border-b border-amber-500/20 font-sans tracking-tight relative overflow-hidden shrink-0 shadow-md">
+                <div className="flex items-center gap-1.5 flex-1 select-none pr-3">
+                  <span className="animate-bounce">⚠️</span>
+                  <span className="font-bold leading-normal text-left">
+                    {lang === 'am' ? emergencyBanner.textAm : emergencyBanner.textEn}
+                  </span>
+                </div>
+                <button 
+                  onClick={() => setEmergencyBanner(prev => ({ ...prev, active: false }))}
+                  className="p-1 rounded-full hover:bg-white/10 transition text-white/85 hover:text-white shrink-0 cursor-pointer"
+                  title="Close Banner"
+                >
+                  <X size={12} className="stroke-[2.5]" />
+                </button>
+              </div>
+            )}
 
 
 
@@ -3669,20 +3821,51 @@ Thank you for supporting digital commerce in Ethiopia!
                     fetchSearchResults(searchQuery);
                   }
                 }}
-                className={`w-full text-xs pl-10 pr-12 py-2.5 rounded-xl outline-none transition-all focus:ring-1 ${isDarkMode ? 'bg-zinc-800 border border-zinc-700 text-zinc-150 placeholder-zinc-550 focus:border-amber-500/40 focus:ring-amber-500/35' : 'bg-stone-100 border border-stone-200 text-stone-850 placeholder-stone-400 focus:border-[#1E3A1A]/40 focus:ring-[#1E3A1A]/30'}`}
+                className={`w-full text-xs pl-10 pr-26 py-2.5 rounded-xl outline-none transition-all focus:ring-1 ${
+                  isDarkMode 
+                    ? 'bg-zinc-800 border border-zinc-700 text-zinc-150 placeholder-zinc-550 focus:border-amber-500/40 focus:ring-amber-500/35' 
+                    : 'bg-stone-100 border border-stone-200 text-stone-850 placeholder-stone-400 focus:border-[#1E3A1A]/40 focus:ring-[#1E3A1A]/30'
+                }`}
               />
-              {searchQuery && (
-                <button 
-                  onClick={() => {
-                    setSearchQuery('');
-                    setGlobalSearchQuery('');
-                    setSearchResults([]);
-                  }}
-                  className="absolute right-3 top-[9px] text-[10px] bg-stone-200 hover:bg-stone-300 text-stone-600 px-1.5 py-0.5 rounded cursor-pointer"
+              <div className="absolute right-2.5 top-1.5 bottom-1.5 flex items-center gap-1">
+                {searchQuery && (
+                  <button 
+                    onClick={() => {
+                      setSearchQuery('');
+                      setGlobalSearchQuery('');
+                      setSearchResults([]);
+                    }}
+                    className="text-[9px] bg-stone-200 hover:bg-stone-300 dark:bg-zinc-700 dark:hover:bg-zinc-650 text-stone-600 dark:text-zinc-300 px-1.5 py-0.5 rounded cursor-pointer transition-all mr-1 font-bold"
+                  >
+                    Clear
+                  </button>
+                )}
+                <div className="h-full w-[1px] bg-stone-300/50 dark:bg-zinc-700/50" />
+                <button
+                  type="button"
+                  onClick={() => setIsImageSearchOpen(true)}
+                  className={`p-1 rounded-lg transition-all cursor-pointer flex items-center justify-center hover:scale-105 active:scale-95 ${
+                    isDarkMode
+                      ? 'text-amber-500 hover:bg-zinc-700'
+                      : 'text-[#1E3A1A] hover:bg-stone-200'
+                  }`}
+                  title={lang === 'en' ? "Search by Image (AI vision)" : "በምስል ፈልግ (AI እይታ)"}
                 >
-                  Clear
+                  <Camera size={13} />
                 </button>
-              )}
+                <button
+                  type="button"
+                  onClick={() => setIsQrSearchOpen(true)}
+                  className={`p-1 rounded-lg transition-all cursor-pointer flex items-center justify-center hover:scale-105 active:scale-95 ${
+                    isDarkMode
+                      ? 'text-emerald-500 hover:bg-zinc-700'
+                      : 'text-[#1E3A1A] hover:bg-stone-200'
+                  }`}
+                  title={lang === 'en' ? "Scan Product or Vendor QR" : "QR ኮድ አንብብ"}
+                >
+                  <QrCode size={13} />
+                </button>
+              </div>
             </div>
             
             <button
@@ -5575,331 +5758,42 @@ Thank you for supporting digital commerce in Ethiopia!
 
           {/* DYNAMIC HOUSES GRID VIEW */}
           {!viewedVendorId && activeTab === 'houses' && (
-            <div className="space-y-4">
-              {/* DYNAMIC SEGMENT DEAL TYPE SELECTOR (RENT VS SALE) */}
-              <div id="houses_segment_control" className={`p-1 rounded-xl flex items-center gap-1 border transition-all ${
-                isDarkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-stone-200/50 border-stone-250'
-              }`}>
-                <button 
-                  onClick={() => setHouseDealType('rent')}
-                  className={`flex-1 py-1.5 text-xs font-black rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-                    houseDealType === 'rent'
-                      ? 'bg-[#1E3A1A] text-white shadow-md scale-[1.01]'
-                      : 'text-stone-500 dark:text-zinc-400 hover:text-[#1E3A1A] dark:hover:text-amber-400'
-                  }`}
-                >
-                  🔑 {lang === 'en' ? 'For Rent / የሚከራይ' : 'የሚከራይ'}
-                </button>
-                <button 
-                  onClick={() => setHouseDealType('buy')}
-                  className={`flex-1 py-1.5 text-xs font-black rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-                    houseDealType === 'buy'
-                      ? 'bg-[#1E3A1A] text-white shadow-md scale-[1.01]'
-                      : 'text-stone-500 dark:text-zinc-400 hover:text-[#1E3A1A] dark:hover:text-amber-400'
-                  }`}
-                >
-                  🏬 {lang === 'en' ? 'For Sale / የሚሸጥ' : 'የሚሸጥ'}
-                </button>
-              </div>
-
-              <div className="flex gap-1.5 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
-                <button 
-                  onClick={() => {
-                    setHousesPropertyType('all');
-                  }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold leading-none shrink-0 transition-all border ${
-                    housesPropertyType === 'all' 
-                      ? 'bg-[#1E3A1A] text-white shadow-sm border-[#1E3A1A] dark:bg-amber-500 dark:text-stone-950 dark:border-amber-500' 
-                      : 'bg-stone-100 hover:bg-stone-200 text-stone-700 dark:bg-zinc-850 dark:hover:bg-zinc-800 dark:text-zinc-305 border-stone-200 dark:border-zinc-800'
-                  }`}
-                >
-                  🏡 All Properties
-                </button>
-                <button 
-                  onClick={() => {
-                    setHousesPropertyType(housesPropertyType === 'condominium' ? 'all' : 'condominium');
-                  }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold leading-none shrink-0 transition-all border ${
-                    housesPropertyType === 'condominium' 
-                      ? 'bg-[#1E3A1A] text-white shadow-sm border-[#1E3A1A] dark:bg-amber-500 dark:text-stone-950 dark:border-amber-500' 
-                      : 'bg-stone-100 hover:bg-stone-200 text-stone-700 dark:bg-zinc-850 dark:hover:bg-zinc-800 dark:text-zinc-305 border-stone-200 dark:border-zinc-800'
-                  }`}
-                >
-                  🏢 ኮንዶሚኒየም
-                </button>
-                <button 
-                  onClick={() => {
-                    setHousesPropertyType(housesPropertyType === 'villa' ? 'all' : 'villa');
-                  }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold leading-none shrink-0 transition-all border ${
-                    housesPropertyType === 'villa' 
-                      ? 'bg-[#1E3A1A] text-white shadow-sm border-[#1E3A1A] dark:bg-amber-500 dark:text-stone-950 dark:border-amber-500' 
-                      : 'bg-stone-100 hover:bg-stone-200 text-stone-700 dark:bg-zinc-850 dark:hover:bg-zinc-800 dark:text-zinc-305 border-stone-200 dark:border-zinc-800'
-                  }`}
-                >
-                  🏡 ቪላ
-                </button>
-                <button 
-                  onClick={() => {
-                    setHousesPropertyType(housesPropertyType === 'apartment' ? 'all' : 'apartment');
-                  }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold leading-none shrink-0 transition-all border ${
-                    housesPropertyType === 'apartment' 
-                      ? 'bg-[#1E3A1A] text-white shadow-sm border-[#1E3A1A] dark:bg-amber-500 dark:text-stone-950 dark:border-amber-500' 
-                      : 'bg-stone-100 hover:bg-stone-200 text-stone-700 dark:bg-zinc-850 dark:hover:bg-zinc-800 dark:text-zinc-305 border-stone-200 dark:border-zinc-800'
-                  }`}
-                >
-                  🏢 አፓርትመንት
-                </button>
-                <button 
-                  onClick={() => {
-                    setHousesPropertyType(housesPropertyType === 'studio' ? 'all' : 'studio');
-                  }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold leading-none shrink-0 transition-all border ${
-                    housesPropertyType === 'studio' 
-                      ? 'bg-[#1E3A1A] text-white shadow-sm border-[#1E3A1A] dark:bg-amber-500 dark:text-stone-950 dark:border-amber-500' 
-                      : 'bg-stone-100 hover:bg-stone-200 text-stone-700 dark:bg-zinc-850 dark:hover:bg-zinc-800 dark:text-zinc-305 border-stone-200 dark:border-zinc-800'
-                  }`}
-                >
-                  🏬 ስቱዲዮ
-                </button>
-              </div>
-
-              {activeListings.length === 0 ? (
-                <div className="flex flex-col gap-3">
-                  <div className="text-center py-12 bg-white/70 border border-dashed border-stone-300 rounded-2xl">
-                    <Home className="mx-auto text-stone-400 mb-2" size={32} />
-                    <p className="text-xs text-stone-600 font-medium font-bold">No properties found.</p>
-                  </div>
-
-                  <div className="p-4 bg-amber-500/5 rounded-2xl border border-dashed border-amber-500/30 text-center space-y-2.5">
-                    <span className="text-xs">🔔</span>
-                    <h5 className="text-[11px] font-bold text-stone-700 dark:text-zinc-300 uppercase tracking-tight">ፍለጋውን አስቀምጥ / Save Search Subscribe Radar</h5>
-                    <p className="text-[10px] text-stone-500 dark:text-zinc-400 leading-normal max-w-xs mx-auto font-sans">
-                      Get an immediate high-priority system alert notice the moment a vendor logs a matching house property matching your active query in <strong>{filterCity === 'all' ? 'Any Location/City' : filterCity}</strong>!
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const newQueryId = 'srch-' + Math.floor(100000 + Math.random() * 900000);
-                        const newSearchObj = {
-                          id: newQueryId,
-                          query: searchQuery || 'All Houses',
-                          city: filterCity,
-                          category: filterCategory,
-                          maxPrice: filterMaxPrice,
-                          tab: 'houses'
-                        };
-                        setSavedSearches(prev => [...prev, newSearchObj]);
-                        alert(`🎉 Search Saved & Subscribed!\nWe have generated a live subscription in our smart matching database radar.\nYou will receive immediate notification once a matching vendor item goes online.`);
-                      }}
-                      className="px-3 py-2 bg-amber-500 hover:bg-amber-600 text-stone-950 font-black rounded-lg text-[9px] uppercase tracking-wider transition-transform active:scale-95 cursor-pointer font-sans"
-                    >
-                      Subscribe & Bookmark Filter Settings
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-3 pb-6">
-                  {activeListings.map(item => {
-                    const isPremium = item.isPremium;
-                    return (
-                      <motion.div 
-                        key={item.id}
-                        whileHover={{ scale: 1.015 }}
-                        whileTap={{ scale: 0.985 }}
-                        onClick={() => setSelectedListing(item)}
-                        className={`bg-white hover:bg-stone-50 border rounded-2xl overflow-hidden cursor-pointer flex flex-col relative transition-all group shadow-sm hover:shadow-md ${
-                          isPremium 
-                            ? 'border-amber-400 ring-1 ring-amber-400/40 shadow-amber-500/10' 
-                            : 'border-stone-200 hover:border-stone-300'
-                        }`}
-                      >
-                        {isPremium && (
-                          <div className="absolute top-2 left-2 z-10 bg-gradient-to-r from-amber-500 to-yellow-400 text-stone-950 text-[7px] font-black tracking-widest px-1.5 py-0.5 rounded-full shadow-md flex items-center gap-0.5 animate-pulse">
-                            👑 VIP VERIFIED
-                          </div>
-                        )}
-                        <img src={item.image} alt={item.title} className="w-full h-28 object-cover group-hover:scale-105 transition-all duration-500" />
-                        <div className="p-2.5 flex-1 flex flex-col justify-between">
-                          <div>
-                            <span 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setViewedVendorId(item.vendorId);
-                                setSelectedListing(null);
-                              }}
-                              title={lang === 'en' ? "Click to view Seller Profile instantly" : "የሻጩን ፕሮፋይል ወዲያውኑ ለመመልከት እዚህ ይጫኑ"}
-                              className="text-[9.5px] text-[#C5A059] hover:text-[#1E3A1A] hover:underline uppercase tracking-wider font-black block mb-1 cursor-pointer flex items-center gap-0.5"
-                            >
-                              👥 {item.vendorName}
-                            </span>
-                            <h3 className="text-xs font-bold line-clamp-2 text-stone-800 mb-2 leading-relaxed h-8">{item.title}</h3>
-                          </div>
-                          <div>
-                            <div className="text-[13px] font-bold text-green-700 font-mono mb-1">{item.price}</div>
-                            <div className="flex items-center gap-1.5 text-[10px] text-stone-500">
-                              <MapPin size={10} className="text-[#C5A059] shrink-0" />
-                              <span className="truncate">{item.location}</span>
-                            </div>
-                          </div>
-                        </div>
-                        <TraditionalCornerOrnament />
-                      </motion.div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+            <HousesScreen 
+              isDarkMode={isDarkMode}
+              lang={lang}
+              houseDealType={houseDealType}
+              setHouseDealType={setHouseDealType}
+              housesPropertyType={housesPropertyType}
+              setHousesPropertyType={setHousesPropertyType}
+              activeListings={activeListings}
+              setSelectedListing={setSelectedListing}
+              setViewedVendorId={setViewedVendorId}
+              searchQuery={searchQuery}
+              filterCity={filterCity}
+              filterCategory={filterCategory}
+              filterMaxPrice={filterMaxPrice}
+              setSavedSearches={setSavedSearches}
+            />
           )}
 
           {/* DYNAMIC certified AGENCIES GRID VIEW */}
           {!viewedVendorId && activeTab === 'agencies' && (
-            <div className="space-y-4">
-              {/* DYNAMIC SEGMENT DEAL TYPE SELECTOR (RENT VS SALE) */}
-              <div id="agencies_segment_control" className={`p-1 rounded-xl flex items-center gap-1 border transition-all ${
-                isDarkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-stone-200/50 border-stone-250'
-              }`}>
-                <button 
-                  onClick={() => setAgencyDealType('rent')}
-                  className={`flex-1 py-1.5 text-xs font-black rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-                    agencyDealType === 'rent'
-                      ? 'bg-[#1E3A1A] text-white shadow-md scale-[1.01]'
-                      : 'text-stone-500 dark:text-zinc-400 hover:text-[#1E3A1A] dark:hover:text-amber-400'
-                  }`}
-                >
-                  🔑 {lang === 'en' ? 'Local / Short Contract' : 'የአገር ውስጥ'}
-                </button>
-                <button 
-                  onClick={() => setAgencyDealType('buy')}
-                  className={`flex-1 py-1.5 text-xs font-black rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-                    agencyDealType === 'buy'
-                      ? 'bg-[#1E3A1A] text-white shadow-md scale-[1.01]'
-                      : 'text-stone-500 dark:text-zinc-400 hover:text-[#1E3A1A] dark:hover:text-amber-400'
-                  }`}
-                >
-                  🏬 {lang === 'en' ? 'International / Europe' : 'የውጭ አገር'}
-                </button>
-              </div>
-
-              {agencyDealType === 'buy' ? (
-                <OverseasEmploymentModule isDarkMode={isDarkMode} lang={lang} />
-              ) : (
-                <>
-                  <div className="bg-emerald-50 border border-emerald-200/80 p-3 rounded-2xl flex items-start gap-2.5 shadow-sm">
-                    <Award size={18} className="text-emerald-700 shrink-0 mt-0.5" />
-                    <div className="text-[11px] text-emerald-800 leading-relaxed">
-                      <span className="font-bold text-[#1E3A1A]">Certified Agencies Only:</span> All agency vendors display legal Ministry of Labor licensures to prevent deceptive recruitment.
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
-                    <button 
-                      onClick={() => setJobFilter('all')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold leading-none shrink-0 transition-all ${agenciesFilter === 'all' ? 'bg-[#1E3A1A] text-white shadow-sm' : 'bg-stone-200/60 text-stone-600 hover:bg-stone-250'}`}
-                    >
-                      💼 All Positions
-                    </button>
-                    <button 
-                      onClick={() => setJobFilter('gulf')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold leading-none shrink-0 transition-all ${agenciesFilter === 'gulf' ? 'bg-[#1E3A1A] text-white shadow-sm' : 'bg-stone-200/60 text-stone-600 hover:bg-stone-250'}`}
-                    >
-                      ✈️ Gulf Region (ገልፍ)
-                    </button>
-                    <button 
-                      onClick={() => setJobFilter('europe')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold leading-none shrink-0 transition-all ${agenciesFilter === 'europe' ? 'bg-[#1E3A1A] text-white shadow-sm' : 'bg-stone-200/60 text-stone-600 hover:bg-stone-250'}`}
-                    >
-                      🇪🇺 European Visas
-                    </button>
-                  </div>
-
-                  {activeListings.length === 0 ? (
-                    <div className="flex flex-col gap-3">
-                      <div className="text-center py-12 bg-white/70 border border-dashed border-stone-300 rounded-2xl">
-                        <Briefcase className="mx-auto text-stone-400 mb-2" size={32} />
-                        <p className="text-xs text-stone-600 font-medium font-semibold">No vacancies open.</p>
-                      </div>
-
-                      <div className="p-4 bg-amber-500/5 rounded-2xl border border-dashed border-amber-500/30 text-center space-y-2.5">
-                        <span className="text-xs">🔔</span>
-                        <h5 className="text-[11px] font-bold text-stone-700 dark:text-zinc-300 uppercase tracking-tight">ፍለጋውን አስቀምጥ / Save Search Subscribe Radar</h5>
-                        <p className="text-[10px] text-stone-500 dark:text-zinc-400 leading-normal max-w-xs mx-auto font-sans">
-                          Get an immediate high-priority system alert notice the moment a vendor logs a matching agency position matching your active query in <strong>{filterCity === 'all' ? 'Any Location/City' : filterCity}</strong>!
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const newQueryId = 'srch-' + Math.floor(100000 + Math.random() * 900000);
-                            const newSearchObj = {
-                              id: newQueryId,
-                              query: searchQuery || 'All Positions',
-                              city: filterCity,
-                              category: filterCategory,
-                              maxPrice: filterMaxPrice,
-                              tab: 'agencies'
-                            };
-                            setSavedSearches(prev => [...prev, newSearchObj]);
-                            alert(`🎉 Search Saved & Subscribed!\nWe have generated a live subscription in our smart matching database radar.\nYou will receive immediate notification once a matching vendor item goes online.`);
-                          }}
-                          className="px-3 py-2 bg-amber-500 hover:bg-amber-600 text-stone-950 font-black rounded-lg text-[9px] uppercase tracking-wider transition-transform active:scale-95 cursor-pointer font-sans"
-                        >
-                          Subscribe & Bookmark Filter Settings
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-2 gap-3 pb-6">
-                      {activeListings.map(item => {
-                        const isPremium = item.isPremium;
-                        return (
-                          <motion.div 
-                            key={item.id}
-                            whileHover={{ scale: 1.015 }}
-                            whileTap={{ scale: 0.985 }}
-                            onClick={() => setSelectedListing(item)}
-                            className={`bg-white hover:bg-stone-50 border rounded-2xl overflow-hidden cursor-pointer flex flex-col relative transition-all group shadow-sm hover:shadow-md ${
-                              isPremium 
-                                ? 'border-amber-400 ring-1 ring-amber-400/40 shadow-amber-500/10' 
-                                : 'border-stone-200 hover:border-stone-300'
-                            }`}
-                          >
-                            {isPremium && (
-                              <div className="absolute top-2 left-2 z-10 bg-gradient-to-r from-amber-500 to-yellow-400 text-stone-950 text-[7px] font-black tracking-widest px-1.5 py-0.5 rounded-full shadow-md flex items-center gap-0.5 animate-pulse">
-                                👑 VIP VERIFIED
-                              </div>
-                            )}
-                            <img src={item.image} alt={item.title} className="w-full h-28 object-cover group-hover:scale-105 transition-all duration-500" />
-                            <div className="p-2.5 flex-1 flex flex-col justify-between">
-                              <div>
-                                <div className="text-[9px] text-[#C5A059] uppercase tracking-wider font-extrabold block mb-1">Lic: {item.agencyLicense}</div>
-                                <h3 className="text-xs font-bold line-clamp-2 text-stone-800 mb-2 leading-relaxed h-8">{item.title}</h3>
-                              </div>
-                              <div>
-                                <div className="text-[13px] font-bold text-green-700 font-mono mb-1">{item.price}</div>
-                                <div 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setViewedVendorId(item.vendorId);
-                                    setSelectedListing(null);
-                                  }}
-                                  title={lang === 'en' ? "Click to view Seller Profile instantly" : "የሻጩን ፕሮፋይል ወዲያውኑ ለመመልከት እዚህ ይጫኑ"}
-                                  className="flex items-center gap-1.5 text-[10px] text-stone-500 hover:text-[#1E3A1A] cursor-pointer"
-                                >
-                                  <Users size={10} className="text-[#C5A059] shrink-0" />
-                                  <span className="truncate hover:underline font-bold">👥 {item.vendorName}</span>
-                                </div>
-                              </div>
-                            </div>
-                            <TraditionalCornerOrnament />
-                          </motion.div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
+            <AgenciesScreen 
+              isDarkMode={isDarkMode}
+              lang={lang}
+              agencyDealType={agencyDealType}
+              setAgencyDealType={setAgencyDealType}
+              activeListings={activeListings}
+              setSelectedListing={setSelectedListing}
+              setViewedVendorId={setViewedVendorId}
+              searchQuery={searchQuery}
+              filterCity={filterCity}
+              filterCategory={filterCategory}
+              filterMaxPrice={filterMaxPrice}
+              setSavedSearches={setSavedSearches}
+              agenciesFilter={agenciesFilter}
+              setJobFilter={setJobFilter}
+            />
           )}
 
           {/* TAB 4: LOTTERY ZONE */}
@@ -5938,131 +5832,23 @@ Thank you for supporting digital commerce in Ethiopia!
 
           {/* TAB 6: SETTINGS VIEW (የማስተካከያ ገጽ) */}
           {!viewedVendorId && activeTab === 'settings' && (
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="space-y-4 pb-12"
-            >
-              {/* 1st: EVERYZONE SMART CALENDAR (ETHIOPIAN & GREGORIAN DUAL CALENDAR) */}
-              <DualCalendar lang={lang} isDarkMode={isDarkMode} />
+            <SettingsScreen 
+              isDarkMode={isDarkMode}
+              setIsDarkMode={setIsDarkMode}
+              lang={lang}
+              setLang={setLang}
+              walletBalance={walletBalance}
+              setWalletBalance={setWalletBalance}
+              scanHistory={scanHistory}
+              setScanHistory={setScanHistory}
+              setSelectedMarketplaceProduct={setSelectedMarketplaceProduct}
+              setViewedVendorId={setViewedVendorId}
+              setActiveDevModule={setActiveDevModule}
+            />
+          )}
 
-              {/* 2nd: EVERYZONE SUBSCRIPTION ENGINE PORTAL */}
-              <SubscriptionsManager 
-                walletBalance={walletBalance} 
-                setWalletBalance={setWalletBalance} 
-                isDarkMode={isDarkMode} 
-                lang={lang} 
-              />
-
-              {/* Scan History Section for successfully scanned QRs */}
-              <div className={`p-4 rounded-3xl border shadow-md transition-all duration-300 ${isDarkMode ? 'bg-zinc-900 border-zinc-800 text-zinc-100' : 'bg-white border-stone-200 text-stone-850'}`}>
-                <div className="flex items-center justify-between mb-3 border-b pb-3 border-stone-100 dark:border-zinc-800">
-                  <div className="flex items-center gap-2.5">
-                    <div className={`p-2 rounded-xl ${isDarkMode ? 'bg-amber-500/15 text-amber-400' : 'bg-[#1E3A1A]/10 text-[#1E3A1A]'}`}>
-                      <History size={16} />
-                    </div>
-                    <div className="text-left">
-                      <h3 className="text-sm font-bold">
-                        {lang === 'en' ? 'QR Scan History' : 'የቃና ታሪክ'}
-                      </h3>
-                      <p className={`text-[10px] ${isDarkMode ? 'text-zinc-400' : 'text-stone-400'}`}>
-                        {lang === 'en' ? 'Quickly access your last 5 successfully scanned items' : 'በቅርቡ በካሜራ የቃኟቸውን የነጋዴዎችና የዕቃዎች ታሪክ በፍጥነት ይክፈቱ'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {scanHistory.length > 0 && (
-                    <button
-                      onClick={() => {
-                        localStorage.removeItem('ez_scan_history');
-                        setScanHistory([]);
-                      }}
-                      className="text-[9px] font-black uppercase tracking-wider text-rose-500 hover:text-rose-600 border border-rose-500/20 px-2 py-1 rounded-xl transition-all cursor-pointer bg-rose-500/5 hover:bg-rose-500/10"
-                    >
-                      {lang === 'en' ? 'Clear' : 'አጽዳ'}
-                    </button>
-                  )}
-                </div>
-
-                {scanHistory.length === 0 ? (
-                  <div className="py-6 text-center">
-                    <span className="text-2xl block mb-1.5">📷</span>
-                    <p className={`text-[11px] leading-relaxed max-w-[280px] mx-auto ${isDarkMode ? 'text-zinc-500' : 'text-stone-400'}`}>
-                      {lang === 'en' 
-                        ? 'No scanned items yet. Scan active products or vendor barcodes via the QR feature to see them here!' 
-                        : 'እስካሁን ምንም ታሪክ የለም! ለመጀመር የነጋዴዎችን ወይም የዕቃዎችን QR በካሜራ ያንቡ።'}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {scanHistory.map((item, idx) => {
-                      const isProduct = item.type === 'product';
-                      return (
-                        <button
-                          key={`${item.id}-${idx}`}
-                          onClick={() => {
-                            if (isProduct) {
-                              setSelectedMarketplaceProduct(item.productData);
-                            } else if (item.vendorId) {
-                              setViewedVendorId(item.vendorId);
-                            }
-                          }}
-                          className={`w-full p-2.5 rounded-2xl border text-left flex items-center justify-between transition-all group hover:scale-[1.01] active:scale-95 cursor-pointer ${
-                            isDarkMode 
-                              ? 'bg-zinc-950/40 border-zinc-850 hover:border-zinc-700' 
-                              : 'bg-stone-50 border-stone-200 hover:border-stone-250'
-                          }`}
-                        >
-                          <div className="flex items-center gap-3">
-                            {/* Visual Avatar */}
-                            {item.image ? (
-                              <img 
-                                src={item.image} 
-                                alt={item.title}
-                                referrerPolicy="no-referrer"
-                                className="w-10 h-10 rounded-xl object-cover border border-stone-200 dark:border-zinc-800"
-                              />
-                            ) : (
-                              <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs text-white uppercase shadow-sm ${item.color || 'bg-amber-600'}`}>
-                                {item.txt || 'QR'}
-                              </div>
-                            )}
-
-                            <div>
-                              <div className="flex items-center gap-1.5 mb-0.5">
-                                <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${
-                                  isProduct
-                                    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
-                                    : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
-                                }`}>
-                                  {isProduct 
-                                    ? (lang === 'en' ? 'Product' : 'ዕቃ') 
-                                    : (lang === 'en' ? 'Seller' : 'ሻጭ')}
-                                </span>
-                                <span className="text-[8px] text-stone-400 font-mono">
-                                  {new Date(item.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                                </span>
-                              </div>
-                              <h4 className="text-xs font-bold leading-tight group-hover:text-amber-500 transition-colors">
-                                {item.title}
-                              </h4>
-                              <p className={`text-[9.5px] mt-0.5 leading-none font-medium ${isDarkMode ? 'text-zinc-400' : 'text-stone-500'}`}>
-                                {item.subtitle}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">
-                            <span>{lang === 'en' ? 'Open' : 'ክፈት'}</span>
-                            <ChevronRight size={10} className="group-hover:translate-x-0.5 transition-transform" />
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
+          {!viewedVendorId && activeTab === 'settings' && (
+            <div className="space-y-4 pb-12">
               {/* 3rd: ADVANCED CITIZEN & BUSINESS HUBS (LAUNCH INTEGRATIVE MODULES) */}
               <div className={`p-4 rounded-3xl border shadow-md transition-all duration-300 ${isDarkMode ? 'bg-zinc-900 border-zinc-800 text-zinc-100' : 'bg-white border-stone-200 text-stone-850'}`}>
                 <div className="flex items-center gap-2.5 mb-3.5 border-b pb-3 border-stone-100 dark:border-zinc-800">
@@ -6091,7 +5877,9 @@ Thank you for supporting digital commerce in Ethiopia!
                     { id: 'sre', titleEn: 'SRE & Cyber-Security', titleAm: 'የክትትልና የደህንነት ማዕከል', descEn: 'Metrics, Loki logging, Sentry & private storage', descAm: 'የስርዓት ክትትል፣ ሎግ፣ የሴንትሪና የደህንነት መጠበቂያ', icon: '🛡️', color: 'from-rose-500 to-indigo-600' },
                     { id: 'vendor_dashboard', titleEn: 'Vendor Store Hub', titleAm: 'የሻጭ አስተዳዳሪ ሰሌዳ', descEn: 'Vacation mode, sales charts & withdraws', descAm: 'የሽያጭ ሰንጠረዥና የገንዘብ ማውጫ', icon: '🏬', color: 'from-amber-600 to-yellow-750' },
                     { id: 'order_tracking', titleEn: 'Order Tracker', titleAm: 'ትእዛዝ መከታተያ', descEn: 'Amazon-style live progress tracking', descAm: 'የእቃ አቅርቦት ደረጃ መከታተያ ሰሌዳ', icon: '📦', color: 'from-violet-600 to-purple-800' },
-                    { id: 'wishlist', titleEn: 'Curated Wishlist', titleAm: 'የተመረጡ ምኞቶች', descEn: 'Custom user collections with tags', descAm: 'የምኞት ማህደሮችና ስብስቦች ማከማቻ', icon: '💖', color: 'from-pink-500 to-rose-700' }
+                    { id: 'wishlist', titleEn: 'Curated Wishlist', titleAm: 'የተመረጡ ምኞቶች', descEn: 'Custom user collections with tags', descAm: 'የምኞት ማህደሮችና ስብስቦች ማከማቻ', icon: '💖', color: 'from-pink-500 to-rose-700' },
+                    { id: 'v9_suite', titleEn: 'V9 Core Feature Hub', titleAm: 'ቪ9 ባህሪዎች ማዕከል', descEn: 'Social feed, Live shopping, CRM & loyalty systems', descAm: 'የቀጥታ ስርጭት ሽያጭ፣ የደንበኞች ማስተዳደሪያና የሪፈራል ማዕከል', icon: '🌟', color: 'from-yellow-500 to-amber-650' },
+                    { id: 'monetization', titleEn: 'Monetization Engine', titleAm: 'የገቢ ማመንጫ ማዕከል', descEn: 'Vendor plans, boosts, ad previews, coupons, referrals, receipts & performance scorecards', descAm: 'የሻጭ እቅዶች፣ ማሳደጊያዎች፣ ኩፖኖች፣ ሪፈራሎችና ዲጂታል ደረሰኞች', icon: '⚡', color: 'from-amber-500 to-yellow-600' }
                   ].map((mod) => (
                     <button
                       key={mod.id}
@@ -6396,25 +6184,53 @@ Thank you for supporting digital commerce in Ethiopia!
                 </div>
 
                 <div className="space-y-3.5">
-                  {/* Theme Switcher integrated directly inside Security & Session card */}
-                  <div className="bg-stone-50 dark:bg-zinc-950 p-2.5 rounded-2xl border border-stone-200/50 dark:border-zinc-850">
-                    <div className="text-[11px] font-bold mb-2 text-left">
-                      {t('themeToggleLabel')}
+                  {/* System Preferences Block (Display Appearance & Language) */}
+                  <div className="bg-stone-50 dark:bg-zinc-950 p-3 rounded-2xl border border-stone-200/50 dark:border-zinc-850 text-left space-y-3">
+                    <div className="text-[11px] font-black uppercase tracking-wider text-amber-500 flex items-center gap-1.5 border-b pb-1.5 border-stone-100 dark:border-zinc-800">
+                      ⚙️ {lang === 'en' ? 'System Preferences' : 'የስርዓት ምርጫዎች'}
                     </div>
-                    <div className="flex gap-2">
-                      <button 
+
+                    {/* Theme switcher */}
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <div className="text-[11px] font-bold flex items-center gap-1.5">
+                          {isDarkMode ? <Moon size={13} className="text-amber-400" /> : <Sun size={13} className="text-amber-600" />}
+                          {lang === 'en' ? 'Display Appearance' : 'የማሳያ ሁኔታ'}
+                        </div>
+                        <p className="text-[9px] text-stone-400 dark:text-zinc-500">
+                          {lang === 'en' ? 'Choose dark or light visual interface styles' : 'የጨለማ ወይም ብርሃን ጭብጥ ይቀይሩ'}
+                        </p>
+                      </div>
+                      <button
                         type="button"
-                        onClick={() => setIsDarkMode(false)}
-                        className={`flex-1 py-1.5 rounded-xl text-[10.5px] font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${!isDarkMode ? 'bg-[#1E3A1A] border-[#1E3A1A] text-white shadow-md' : (isDarkMode ? 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-850/50' : 'bg-stone-100 border-stone-200 text-stone-500 hover:bg-stone-150')}`}
+                        onClick={() => setIsDarkMode(!isDarkMode)}
+                        className={`text-[10px] px-2.5 py-1.5 rounded-xl border font-black transition cursor-pointer select-none flex items-center gap-1 ${
+                          isDarkMode ? 'bg-zinc-900 border-zinc-850 hover:bg-zinc-800 text-amber-400' : 'bg-white border-stone-250 hover:bg-stone-100 text-stone-750'
+                        }`}
                       >
-                        ☀️ {t('lightMode')}
+                        {isDarkMode ? '🌙 Dark' : '☀️ Light'}
                       </button>
-                      <button 
+                    </div>
+
+                    {/* Language Switcher */}
+                    <div className="flex items-center justify-between pt-2.5 border-t border-stone-100 dark:border-zinc-850/60">
+                      <div className="space-y-0.5">
+                        <div className="text-[11px] font-bold flex items-center gap-1.5">
+                          <Globe size={13} className="text-amber-500" />
+                          {lang === 'en' ? 'System Language' : 'የስርዓት ቋንቋ'}
+                        </div>
+                        <p className="text-[9px] text-stone-400 dark:text-zinc-500">
+                          {lang === 'en' ? 'Switch between English and Amharic translations' : 'ቋንቋ በእንግሊዝኛ ወይም በአማርኛ መካከል ይቀይሩ'}
+                        </p>
+                      </div>
+                      <button
                         type="button"
-                        onClick={() => setIsDarkMode(true)}
-                        className={`flex-1 py-1.5 rounded-xl text-[10.5px] font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${isDarkMode ? 'bg-amber-500 border-amber-500 text-zinc-950 shadow-md' : 'bg-stone-100 border-stone-200 text-stone-500 hover:bg-stone-155'}`}
+                        onClick={() => setLang(lang === 'en' ? 'am' : 'en')}
+                        className={`text-[10px] px-2.5 py-1.5 rounded-xl border font-black transition cursor-pointer select-none ${
+                          isDarkMode ? 'bg-zinc-900 border-zinc-850 hover:bg-zinc-800 text-amber-400' : 'bg-white border-stone-250 hover:bg-stone-100 text-stone-750'
+                        }`}
                       >
-                        🌙 {t('darkMode')}
+                        {lang === 'en' ? '🇪🇹 አማርኛ' : '🇺🇸 English'}
                       </button>
                     </div>
                   </div>
@@ -6464,12 +6280,13 @@ Thank you for supporting digital commerce in Ethiopia!
                   </button>
                 </div>
               </div>
-            </motion.div>
-          )}
-            </>
+            </div>
           )}
 
-        </div>
+        </>
+      )}
+
+    </div>
 
         {activeDevModule !== 'none' && (
           <div className="flex-1 overflow-y-auto flex flex-col pb-12 relative z-10" id="dev-module-viewport">
@@ -6496,6 +6313,8 @@ Thank you for supporting digital commerce in Ethiopia!
                    : activeDevModule === 'vendor_dashboard' ? '🏬 Vendor Store Hub'
                    : activeDevModule === 'order_tracking' ? '📦 Amazon Order Tracker'
                    : activeDevModule === 'wishlist' ? '💖 Curated Wishlist'
+                   : activeDevModule === 'v9_suite' ? '🌟 V9 Core Feature Hub'
+                   : activeDevModule === 'monetization' ? '⚡ Monetization Engine'
                    : '💳 Personal Wallet'}
                 </span>
               </div>
@@ -6595,6 +6414,26 @@ Thank you for supporting digital commerce in Ethiopia!
                   lang={lang === 'am' ? 'am' : 'en'}
                   triggerPushNotification={triggerPushNotification}
                   onClose={() => setActiveDevModule('none')}
+                />
+              )}
+              {activeDevModule === 'v9_suite' && (
+                <V9SuperSuite 
+                  isDarkMode={isDarkMode}
+                  lang={lang === 'am' ? 'am' : 'en'}
+                  triggerPushNotification={triggerPushNotification}
+                  onClose={() => setActiveDevModule('none')}
+                  walletBalance={walletBalance}
+                  setWalletBalance={setWalletBalance}
+                />
+              )}
+              {activeDevModule === 'monetization' && (
+                <EveryzoneMonetizationEngine 
+                  isDarkMode={isDarkMode}
+                  lang={lang === 'am' ? 'am' : 'en'}
+                  triggerPushNotification={triggerPushNotification}
+                  onClose={() => setActiveDevModule('none')}
+                  walletBalance={walletBalance}
+                  setWalletBalance={setWalletBalance}
                 />
               )}
             </div>
@@ -6717,21 +6556,53 @@ Thank you for supporting digital commerce in Ethiopia!
                         setGlobalSearchQuery(e.target.value);
                         fetchSearchResults(e.target.value);
                       }}
-                      className={`w-full text-sm pl-12 pr-28 py-3.5 rounded-2xl border outline-none transition-all focus:ring-2 ${
+                      className={`w-full text-sm pl-12 pr-32 py-3.5 rounded-2xl border outline-none transition-all focus:ring-2 ${
                         isDarkMode 
                           ? 'bg-zinc-900 border-zinc-800 text-zinc-100 placeholder-zinc-500 focus:border-amber-500/40 focus:ring-amber-500/20' 
                           : 'bg-white border-stone-200 text-stone-900 placeholder-stone-400 focus:border-[#1E3A1A]/40 focus:ring-[#1E3A1A]/10'
                       }`}
                     />
-                    {globalSearchQuery.trim() && (
+                    <div className="absolute right-3.5 top-2.5 bottom-2.5 flex items-center gap-1.5">
+                      {globalSearchQuery.trim() && (
+                        <button
+                          type="button"
+                          onClick={() => saveSearchQuery(globalSearchQuery)}
+                          className={`p-1.5 rounded-xl border transition-all cursor-pointer flex items-center justify-center hover:scale-105 active:scale-95 ${
+                            isDarkMode
+                              ? 'bg-amber-500/15 border-amber-500/30 text-amber-500 hover:bg-amber-500/25'
+                              : 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'
+                          }`}
+                          title={lang === 'en' ? "Save Search Query" : "ፍለጋውን አስቀምጥ"}
+                        >
+                          <Bookmark size={14} className="text-amber-500" />
+                        </button>
+                      )}
+                      <div className="h-full w-[1px] bg-stone-300/50 dark:bg-zinc-700/50" />
                       <button
-                        onClick={() => saveSearchQuery(globalSearchQuery)}
-                        className="absolute right-3 top-2.5 px-3 py-1.5 bg-amber-500 text-neutral-950 text-xs font-black rounded-xl hover:bg-amber-400 transition-all cursor-pointer flex items-center gap-1 shadow-xs"
+                        type="button"
+                        onClick={() => setIsImageSearchOpen(true)}
+                        className={`p-1.5 rounded-xl border transition-all cursor-pointer flex items-center justify-center hover:scale-105 active:scale-95 ${
+                          isDarkMode
+                            ? 'bg-zinc-850 border-zinc-750 text-amber-500 hover:bg-zinc-750'
+                            : 'bg-stone-50 border-stone-200 text-amber-600 hover:bg-stone-100'
+                        }`}
+                        title={lang === 'en' ? "Search by Image (Shein style AI vision)" : "በምስል ፈልግ (AI እይታ)"}
                       >
-                        <Bookmark size={11} />
-                        Save Search
+                        <Camera size={14} className="text-amber-500" />
                       </button>
-                    )}
+                      <button
+                        type="button"
+                        onClick={() => setIsQrSearchOpen(true)}
+                        className={`p-1.5 rounded-xl border transition-all cursor-pointer flex items-center justify-center hover:scale-105 active:scale-95 ${
+                          isDarkMode
+                            ? 'bg-zinc-850 border-zinc-750 text-[#10B981] hover:bg-zinc-750'
+                            : 'bg-stone-50 border-stone-200 text-[#10B981] hover:bg-stone-100'
+                        }`}
+                        title={lang === 'en' ? "Scan Product or Vendor QR" : "QR ኮድ አንብብ"}
+                      >
+                        <QrCode size={14} className="text-emerald-500" />
+                      </button>
+                    </div>
                   </div>
 
                   {/* AI CHAT ASSISTANT COMPONENT */}
@@ -6997,8 +6868,38 @@ Thank you for supporting digital commerce in Ethiopia!
                 )}
 
                 {/* Search Results Display */}
-                {!searchLoading && globalSearchQuery.trim() && (
+                {!searchLoading && (globalSearchQuery.trim() || imageSearchExplanation) && (
                   <div className="space-y-4">
+                    {imageSearchExplanation && (
+                      <div className={`p-4 rounded-2xl border flex gap-3.5 items-start ${
+                        isDarkMode ? 'bg-amber-500/5 border-amber-500/20' : 'bg-amber-50/50 border-amber-200'
+                      }`}>
+                        <div className="p-2 bg-amber-500/15 text-amber-500 rounded-xl mt-0.5">
+                          <Camera size={18} />
+                        </div>
+                        <div className="min-w-0">
+                          <h5 className="text-xs font-black text-amber-500 uppercase tracking-wider flex items-center gap-1.5">
+                            ✨ AI Vision Analysis Match
+                          </h5>
+                          <p className={`text-[11.5px] font-medium leading-relaxed mt-1 ${
+                            isDarkMode ? 'text-zinc-300' : 'text-stone-700'
+                          }`}>
+                            {lang === 'en' ? imageSearchExplanation.en : imageSearchExplanation.am}
+                          </p>
+                          <button
+                            onClick={() => {
+                              setImageSearchExplanation(null);
+                              setSearchResults([]);
+                            }}
+                            className="text-[9.5px] font-black uppercase text-amber-500 hover:underline mt-2 flex items-center gap-1"
+                          >
+                            <RefreshCw size={10} />
+                            Clear Visual Search / Clear results
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="flex justify-between items-center">
                       <h4 className="text-xs font-black uppercase tracking-wider text-stone-400 flex items-center gap-1.5">
                         <CheckCircle2 size={13} className="text-amber-500" />
@@ -8662,6 +8563,178 @@ Thank you for supporting digital commerce in Ethiopia!
               lang={lang}
             />
           )}
+
+          {/* IMAGE SEARCH MODAL */}
+          <AnimatePresence>
+            {isImageSearchOpen && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs font-sans">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className={`w-full max-w-lg rounded-3xl overflow-hidden border shadow-2xl relative flex flex-col max-h-[90vh] ${
+                    isDarkMode ? 'bg-zinc-900 border-zinc-800 text-zinc-100' : 'bg-white border-stone-200 text-stone-850'
+                  }`}
+                >
+                  {/* Header */}
+                  <div className="p-4 border-b border-stone-100 dark:border-zinc-800 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 bg-[#1E3A1A]/10 dark:bg-amber-400/15 rounded-xl text-[#C5A059]">
+                        <Camera size={20} className="animate-pulse" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-black tracking-tight">
+                          {lang === 'en' ? 'Every-Zone AI Visual Product Finder' : 'የኤቭሪ-ዞን AI ምስላዊ ምርት መፈለጊያ'}
+                        </h3>
+                        <p className="text-[10px] opacity-65 leading-tight">
+                          {lang === 'en' ? 'Upload or select any product image to find matching marketplace items' : 'የምርት ፎቶ በመስቀል በገበያችን ውስጥ ያሉትን ተመሳሳይ እቃዎች ያግኙ'}
+                        </p>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => setIsImageSearchOpen(false)}
+                      className="p-1.5 rounded-full hover:bg-stone-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+
+                  {/* Body */}
+                  <div className="p-6 space-y-5 overflow-y-auto text-left">
+                    {/* Drag and Drop Zone */}
+                    <div
+                      onDragOver={(e) => { e.preventDefault(); }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                          const file = e.dataTransfer.files[0];
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            handleImageSearch(reader.result as string);
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                      className={`p-8 border-2 border-dashed rounded-2xl text-center flex flex-col items-center justify-center space-y-3 cursor-pointer transition-all duration-200 ${
+                        isDarkMode 
+                          ? 'border-zinc-800 bg-zinc-950/40 hover:border-[#C5A059]' 
+                          : 'border-stone-200 bg-stone-50/50 hover:border-[#C5A059]'
+                      }`}
+                    >
+                      <div className="p-3 bg-white dark:bg-zinc-900 rounded-2xl border border-stone-200/50 dark:border-zinc-800 shadow-sm">
+                        <Camera size={24} className="text-[#C5A059]" />
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <span className="text-[11.5px] font-bold block">
+                          {lang === 'en' ? 'Drag & drop image here, or click to browse' : 'ምስሉን እዚህ ይጎትቱት ወይም ይምረጡት'}
+                        </span>
+                        <span className="text-[9.5px] opacity-50 block max-w-xs mx-auto leading-normal">
+                          {lang === 'en' ? 'Supports PNG, JPG, or WEBP (Max 10MB)' : 'PNG, JPG ወይም WEBP ምስሎች (ከ 10MB በታች)'}
+                        </span>
+                      </div>
+
+                      <label className="px-3.5 py-1.5 bg-[#1E3A1A] text-white rounded-xl text-[10.5px] font-bold uppercase cursor-pointer hover:bg-emerald-850 active:scale-95 transition-all">
+                        {lang === 'en' ? 'Browse Files' : 'ፎቶ ምረጥ'}
+                        <input 
+                          type="file"
+                          className="hidden"
+                          accept="image/*"
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              const file = e.target.files[0];
+                              const reader = new FileReader();
+                              reader.onloadend = () => {
+                                handleImageSearch(reader.result as string);
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                        />
+                      </label>
+                    </div>
+
+                    {/* Loader */}
+                    {imageSearchLoading && (
+                      <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-center space-y-2">
+                        <RefreshCw className="animate-spin mx-auto text-amber-500" size={20} />
+                        <p className="text-xs font-bold text-amber-500 animate-pulse">
+                          {lang === 'en' ? 'AI Vision Model analyzing image structures...' : 'AI ምስላዊ መፈለጊያው ምርቱን በመተንተን ላይ ነው...'}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Custom High-Quality Simulation Presets for Testing */}
+                    <div className="space-y-2.5">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[11px] font-extrabold uppercase text-amber-500 tracking-wider">
+                          🎁 {lang === 'en' ? 'High-fidelity Demo Images' : 'ለሙከራ የሚሆኑ ምስሎች'}
+                        </span>
+                        <span className="text-[8px] bg-amber-500/10 text-amber-500 px-1.5 py-0.5 rounded-full uppercase font-mono">1-Click Test</span>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-2.5">
+                        {/* Preset 1: Habesha Dress */}
+                        <button
+                          onClick={() => {
+                            handleImageSearch("data:image/jpeg;base64,habeshakemisdummydata123456");
+                          }}
+                          className={`p-2 rounded-xl border text-left flex gap-2.5 items-center cursor-pointer transition-all ${
+                            isDarkMode 
+                              ? 'bg-zinc-950/40 border-zinc-800 hover:border-amber-500' 
+                              : 'bg-stone-50 border-stone-200 hover:border-[#1E3A1A]'
+                          }`}
+                        >
+                          <img 
+                            src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=200" 
+                            alt="Habesha" 
+                            className="w-10 h-10 rounded-lg object-cover border"
+                            referrerPolicy="no-referrer"
+                          />
+                          <div className="min-w-0">
+                            <h5 className="text-[10px] font-bold truncate">Habesha Kemis</h5>
+                            <p className="text-[8px] opacity-60">Traditional Wear</p>
+                          </div>
+                        </button>
+
+                        {/* Preset 2: iPhone */}
+                        <button
+                          onClick={() => {
+                            handleImageSearch("data:image/jpeg;base64,iphonedummydata12345");
+                          }}
+                          className={`p-2 rounded-xl border text-left flex gap-2.5 items-center cursor-pointer transition-all ${
+                            isDarkMode 
+                              ? 'bg-zinc-950/40 border-zinc-800 hover:border-amber-500' 
+                              : 'bg-stone-50 border-stone-200 hover:border-[#1E3A1A]'
+                          }`}
+                        >
+                          <img 
+                            src="https://images.unsplash.com/photo-1695048133142-1a20484d2569?auto=format&fit=crop&q=80&w=200" 
+                            alt="iPhone" 
+                            className="w-10 h-10 rounded-lg object-cover border"
+                            referrerPolicy="no-referrer"
+                          />
+                          <div className="min-w-0">
+                            <h5 className="text-[10px] font-bold truncate">iPhone 15 Pro</h5>
+                            <p className="text-[8px] opacity-60">Electronics</p>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
+
+          {/* QR CODE SCANNER MODAL */}
+          <QRCodeScanner
+            isOpen={isQrSearchOpen}
+            onClose={() => setIsQrSearchOpen(false)}
+            onScanSuccess={handleQRSearchSuccess}
+            lang={lang}
+            isDarkMode={isDarkMode}
+          />
 
       </>
     )}

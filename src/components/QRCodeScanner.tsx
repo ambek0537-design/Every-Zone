@@ -7,7 +7,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 
 export interface ScanResult {
-  type: 'FAYDA_ID' | 'PAYMENT_CODE' | 'TRANSFER_CODE' | 'PASSPORT_TICKET';
+  type: 'FAYDA_ID' | 'PAYMENT_CODE' | 'TRANSFER_CODE' | 'PASSPORT_TICKET' | 'MARKETPLACE_VENDOR' | 'MARKETPLACE_PRODUCT';
   data: {
     fullName?: string;
     birthDate?: string;
@@ -20,6 +20,9 @@ export interface ScanResult {
     recipientId?: string;
     recipientName?: string;
     ticketId?: string;
+    vendorId?: string;
+    productId?: string;
+    productTitle?: string;
   };
 }
 
@@ -186,6 +189,8 @@ export function QRCodeScanner({ isOpen, onClose, onScanSuccess, lang, isDarkMode
         cbe: 'CBE Pay Bill Code',
         p2p: 'P2P Transfer Code',
         passport: 'Passport Booking Ticket',
+        vendor: 'Marketplace Merchant / Owner',
+        product: 'Marketplace Product QR',
       }
     },
     am: {
@@ -213,6 +218,8 @@ export function QRCodeScanner({ isOpen, onClose, onScanSuccess, lang, isDarkMode
         cbe: 'የንግድ ባንክ የክፍያ ኮድ',
         p2p: 'የአቻ ለአቻ ማስተላለፊያ',
         passport: 'የፓስፖርት ቀጠሮ ቲኬት',
+        vendor: 'የገበያ ሻጭ / ባለቤት መገለጫ',
+        product: 'የምርት QR ኮድ',
       }
     }
   }[lang];
@@ -309,6 +316,56 @@ export function QRCodeScanner({ isOpen, onClose, onScanSuccess, lang, isDarkMode
       desc: 'Physical receipt barcode for appointment tracking #1024.',
       data: {
         ticketId: 'EVZ-PASS-1024'
+      }
+    },
+    {
+      id: 'preset-vendor-v1',
+      name: 'Merchant QR: Makeda Royal Weaving',
+      type: 'MARKETPLACE_VENDOR' as const,
+      icon: <QrCode className="text-amber-600" size={18} />,
+      badge: t.types.vendor,
+      desc: 'Scan to view Almaz Tekle\'s royal handwoven Habesha clothing store.',
+      data: {
+        vendorId: 'v1',
+        merchantName: 'Makeda Royal Weaving'
+      }
+    },
+    {
+      id: 'preset-vendor-v2',
+      name: 'Merchant QR: Makeda Specialty Coffee',
+      type: 'MARKETPLACE_VENDOR' as const,
+      icon: <QrCode className="text-amber-800" size={18} />,
+      badge: t.types.vendor,
+      desc: 'Scan to open Makeda Organic Yirgacheffe & Sidamo Specialty Coffee storefront.',
+      data: {
+        vendorId: 'v2',
+        merchantName: 'Makeda Specialty Coffee'
+      }
+    },
+    {
+      id: 'preset-product-l1',
+      name: 'Product QR: Golden Habesha Kemis',
+      type: 'MARKETPLACE_PRODUCT' as const,
+      icon: <QrCode className="text-rose-500" size={18} />,
+      badge: t.types.product,
+      desc: 'Scan to locate the Golden Habesha Kemis and redirect to its owner: Makeda Royal Weaving.',
+      data: {
+        productId: 'l1',
+        productTitle: 'Premium Hand-spun Golden Habesha Kemis',
+        vendorId: 'v1'
+      }
+    },
+    {
+      id: 'preset-product-l3-iphone',
+      name: 'Product QR: Apple iPhone 15 Pro Max',
+      type: 'MARKETPLACE_PRODUCT' as const,
+      icon: <QrCode className="text-blue-500" size={18} />,
+      badge: t.types.product,
+      desc: 'Scan to locate the Apple iPhone 15 Pro Max and view its seller: Makeda Royal Weaving.',
+      data: {
+        productId: 'l3_iphone',
+        productTitle: 'Apple iPhone 15 Pro Max',
+        vendorId: 'v1'
       }
     }
   ];

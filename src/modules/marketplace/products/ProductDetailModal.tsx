@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { 
-  X, Star, Heart, ShoppingBag, Plus, Minus, ShieldAlert, BadgePercent 
+  X, Star, Heart, ShoppingBag, Plus, Minus, ShieldAlert, BadgePercent,
+  ShieldCheck, HelpCircle, ChevronDown, Clock, RefreshCw, CheckCircle2, Award
 } from 'lucide-react';
 import { ProductMediaGallery } from '../product-media/ProductMediaGallery';
 import { ReviewsSection } from '../reviews/ReviewsSection';
@@ -84,6 +85,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
     product.variants && product.variants.length > 0 ? product.variants[0].id : null
   );
   const [quantity, setQuantity] = useState(1);
+  const [activeTab, setActiveTab] = useState<'info' | 'qa'>('info');
+  const [expandedQa, setExpandedQa] = useState<number | null>(null);
 
   const selectedVariant = product.variants?.find(v => v.id === selectedVariantId) || null;
   const maxAvailable = selectedVariant ? selectedVariant.quantity : product.quantity;
@@ -101,6 +104,22 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
     }
   };
 
+  // Pre-configured Questions and Answers
+  const faqList = [
+    {
+      q: 'Is this item authentic and handmade?',
+      a: 'Yes, this product is hand-woven or crafted by certified local Ethiopian weaving cooperatives in Chencha, using 100% natural organic cotton or materials.'
+    },
+    {
+      q: 'Can I inspect the product before accepting delivery?',
+      a: 'Absolutely! Our Every-zone Express courier waits for you to check the product condition. Only after you sign satisfactions will the escrow funds clear to the merchant.'
+    },
+    {
+      q: 'What is the refund policy?',
+      a: 'We support a 14-Day Free Escrow Return Guarantee. If you find any quality discrepancies, request a return inside the app to automatically receive full refunds.'
+    }
+  ];
+
   return (
     <div id="product-detail-overlay" className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
       <div id="product-detail-modal" className="relative w-full max-w-4xl bg-neutral-950 border border-neutral-850 rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row my-auto max-h-[90vh] md:max-h-[85vh]">
@@ -109,7 +128,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
         <button
           id="close-detail-modal-btn"
           onClick={onClose}
-          className="absolute top-4 right-4 bg-neutral-900/80 backdrop-blur hover:bg-neutral-800 text-stone-300 hover:text-white p-2 rounded-full border border-neutral-800 transition z-50 cursor-pointer"
+          className="absolute top-4 right-4 bg-neutral-900/80 backdrop-blur hover:bg-neutral-850 text-stone-300 hover:text-white p-2 rounded-full border border-neutral-800 transition z-50 cursor-pointer"
         >
           <X className="w-5 h-5" />
         </button>
@@ -126,35 +145,53 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
         {/* Configuration Block (Right Column) */}
         <div className="w-full md:w-1/2 p-5 sm:p-6 flex flex-col justify-between overflow-y-auto no-scrollbar bg-neutral-950">
           <div className="space-y-4">
-            {/* Vendor Name */}
+            
+            {/* Vendor Corporate Trust Card */}
             {product.vendor && (
-              <div className="flex flex-col gap-2 border-b border-neutral-900 pb-3">
-                <div className="flex flex-wrap items-center gap-1.5 text-amber-500 font-medium text-xs uppercase tracking-wider">
-                  <span className="text-stone-400 normal-case">Sold by:</span>
-                  <span className="font-extrabold">{product.vendor.shopName}</span>
-                  {product.vendor.id === 'v-1' ? (
-                    <span className="bg-amber-500/15 text-amber-400 border border-amber-500/30 text-[9.5px] px-2 py-0.5 rounded-full font-black tracking-wider flex items-center gap-1">
-                      👑 {lang === 'en' ? 'Trusted Business' : 'ታማኝ ንግድ'}
-                    </span>
-                  ) : product.vendor.id === 'v-2' ? (
-                    <span className="bg-yellow-500/15 text-yellow-500 border border-yellow-500/35 text-[9.5px] px-2 py-0.5 rounded-full font-black tracking-wider flex items-center gap-1">
-                      🟡 {lang === 'en' ? 'Premium Seller' : 'ፕሪሚየም ሻጭ'}
-                    </span>
-                  ) : (
-                    <span className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/35 text-[9.5px] px-2 py-0.5 rounded-full font-black tracking-wider flex items-center gap-1">
-                      🟢 {lang === 'en' ? 'Verified' : 'የተረጋገጠ'}
-                    </span>
+              <div className="bg-neutral-900/40 border border-neutral-850 rounded-2xl p-3.5 space-y-2.5">
+                <div className="flex justify-between items-start">
+                  <div className="space-y-0.5">
+                    <span className="text-[9.5px] uppercase font-black text-stone-500 tracking-wider block font-mono">Verified Seller Node</span>
+                    <h4 className="text-xs font-black text-stone-100 flex items-center gap-1.5">
+                      🏪 {product.vendor.shopName}
+                      {product.vendor.id === 'v-1' ? (
+                        <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[9px] px-1.5 py-0.2 rounded font-black tracking-wide">
+                          👑 {lang === 'en' ? 'Trusted' : 'ታማኝ'}
+                        </span>
+                      ) : (
+                        <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[9px] px-1.5 py-0.2 rounded font-black tracking-wide">
+                          ✓ {lang === 'en' ? 'Verified' : 'የተረጋገጠ'}
+                        </span>
+                      )}
+                    </h4>
+                  </div>
+
+                  {onViewVendorProfile && (
+                    <button
+                      id="view-vendor-profile-btn"
+                      onClick={() => onViewVendorProfile(product.vendor!.id)}
+                      className="bg-amber-500 hover:bg-amber-600 text-neutral-950 text-[9.5px] font-black px-2.5 py-1 rounded-lg cursor-pointer transition-colors"
+                    >
+                      Visit Profile
+                    </button>
                   )}
                 </div>
-                {onViewVendorProfile && (
-                  <button
-                    id="view-vendor-profile-btn"
-                    onClick={() => onViewVendorProfile(product.vendor!.id)}
-                    className="w-full sm:w-auto self-start bg-amber-500 hover:bg-amber-600 text-neutral-950 text-[10px] font-black px-2.5 py-1.2 rounded-lg flex items-center justify-center gap-1 cursor-pointer transition-all active:scale-95 shadow-sm"
-                  >
-                    👥 {lang === 'en' ? 'View Profile' : 'ፕሮፋይል እይ'}
-                  </button>
-                )}
+
+                {/* Seller stats & ratings */}
+                <div className="grid grid-cols-3 gap-2 text-[10px] text-stone-400 border-t border-neutral-850/60 pt-2.5">
+                  <div className="text-left">
+                    <span className="text-stone-500 block uppercase text-[8px] font-mono font-bold">Seller Rating</span>
+                    <span className="text-amber-400 font-extrabold flex items-center gap-0.5">★ 4.9 <strong className="text-stone-500 text-[8px] font-normal">(98.7% sat)</strong></span>
+                  </div>
+                  <div className="text-left border-l border-neutral-850 pl-2">
+                    <span className="text-stone-500 block uppercase text-[8px] font-mono font-bold">Escrow Deals</span>
+                    <span className="text-emerald-400 font-extrabold">120+ Clear</span>
+                  </div>
+                  <div className="text-left border-l border-neutral-850 pl-2">
+                    <span className="text-stone-500 block uppercase text-[8px] font-mono font-bold">Licenses</span>
+                    <span className="text-stone-200 font-mono font-extrabold">ET-TIN-8390</span>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -185,6 +222,19 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               )}
             </div>
 
+            {/* Rapid Shipping & Delivery Estimate Tomorrow */}
+            <div className="bg-neutral-900/20 border border-neutral-850 rounded-xl p-2.5 flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2 text-stone-400">
+                <Clock className="w-4 h-4 text-amber-500 shrink-0" />
+                <span>
+                  Delivery Estimate: <strong className="text-stone-100">Tomorrow, July 5</strong>
+                </span>
+              </div>
+              <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[9.5px] px-1.5 py-0.5 rounded font-black uppercase font-mono">
+                Express Rider
+              </span>
+            </div>
+
             {/* Condition badge */}
             <div className="flex items-center gap-2 text-xs">
               <span className="text-stone-400">Condition:</span>
@@ -196,21 +246,68 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               <span className="text-stone-300 font-mono text-[11px]">{product.sku}</span>
             </div>
 
-            {/* Description content */}
+            {/* Product description / Q&A toggles */}
             <div className="border-t border-neutral-900 pt-3">
-              <p className="text-xs text-stone-400 leading-relaxed max-h-[120px] overflow-y-auto no-scrollbar">
-                {product.description}
-              </p>
-            </div>
+              <div className="flex gap-4 border-b border-neutral-900 pb-2 mb-2">
+                <button 
+                  onClick={() => setActiveTab('info')}
+                  className={`text-xs font-bold uppercase tracking-wider pb-1 transition-all ${activeTab === 'info' ? 'text-amber-500 border-b-2 border-amber-500' : 'text-stone-500 hover:text-stone-300'}`}
+                >
+                  Overview & Specs
+                </button>
+                <button 
+                  onClick={() => setActiveTab('qa')}
+                  className={`text-xs font-bold uppercase tracking-wider pb-1 transition-all ${activeTab === 'qa' ? 'text-amber-500 border-b-2 border-amber-500' : 'text-stone-500 hover:text-stone-300'}`}
+                >
+                  Q&A Corner
+                </button>
+              </div>
 
-            {/* Price History Chart */}
-            <div className="border-t border-neutral-900 pt-3">
-              <PriceHistoryChart
-                productId={product.id}
-                originalPrice={product.price}
-                discountPrice={product.discountPrice}
-                currency={product.currency}
-              />
+              {activeTab === 'info' ? (
+                <div className="space-y-3">
+                  <p className="text-xs text-stone-400 leading-relaxed max-h-[100px] overflow-y-auto no-scrollbar">
+                    {product.description}
+                  </p>
+
+                  {/* Price History Chart */}
+                  <PriceHistoryChart
+                    productId={product.id}
+                    originalPrice={product.price}
+                    discountPrice={product.discountPrice}
+                    currency={product.currency}
+                  />
+
+                  {/* Return Policy Notice Box */}
+                  <div className="bg-neutral-900/30 border border-neutral-850 rounded-2xl p-3 flex gap-2.5 items-start">
+                    <RefreshCw className="w-4.5 h-4.5 text-emerald-500 shrink-0 mt-0.5" />
+                    <div className="text-left space-y-0.5">
+                      <span className="text-[10px] uppercase font-black tracking-wider text-emerald-400 block font-mono">14-Day Free Escrow Returns</span>
+                      <p className="text-[9.5px] text-stone-450 leading-relaxed">
+                        If the product doesn't meet the described specification grade, request a return within 14 days for a 100% full escrow balance refund.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-[220px] overflow-y-auto no-scrollbar text-left">
+                  {faqList.map((faq, index) => (
+                    <div key={`faq-${index}`} className="border-b border-neutral-900 pb-2">
+                      <button 
+                        onClick={() => setExpandedQa(expandedQa === index ? null : index)}
+                        className="w-full flex items-center justify-between text-xs font-bold text-stone-200 hover:text-stone-100 py-1.5 text-left"
+                      >
+                        <span className="flex items-center gap-1.5"><HelpCircle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" /> {faq.q}</span>
+                        <ChevronDown className={`w-4 h-4 text-stone-500 transition-transform ${expandedQa === index ? 'rotate-180' : ''}`} />
+                      </button>
+                      {expandedQa === index && (
+                        <p className="text-[10.5px] text-stone-400 pl-5 leading-normal pt-1 bg-neutral-950/20 rounded">
+                          {faq.a}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Variant Selector */}
