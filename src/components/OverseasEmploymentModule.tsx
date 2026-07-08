@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from "motion/react";
 import { 
   Briefcase, Search, Filter, Globe, DollarSign, Clock, ShieldAlert, CheckCircle2, 
   XCircle, Plus, ChevronRight, Star, Upload, Calendar, Bell, FileText, Lock, 
-  AlertTriangle, User, Users, TrendingUp, MapPin, Sparkles, MessageSquare, Shield, Info, Eye, Trash2
+  AlertTriangle, User, Users, TrendingUp, MapPin, Sparkles, MessageSquare, Shield, 
+  Info, Eye, Trash2, Download, Phone, Heart, Camera, Mic, Send, Check, Activity, FileCheck
 } from "lucide-react";
 
 import { Job, JobCategory } from "../modules/overseas/jobs/job.types";
@@ -23,16 +24,50 @@ export default function OverseasEmploymentModule({ isDarkMode, lang }: OverseasE
   // Mode selection: "applicant" or "agency"
   const [activeRole, setActiveRole] = useState<"applicant" | "agency">("applicant");
   
-  // Applicant Tabs: "marketplace", "my_portal"
-  const [applicantTab, setApplicantTab] = useState<"marketplace" | "my_portal">("marketplace");
+  // Applicant Sub-Tabs: "marketplace", "dashboard", "smart_cv", "countries", "agencies", "chat"
+  const [applicantTab, setApplicantTab] = useState<"marketplace" | "dashboard" | "smart_cv" | "countries" | "agencies" | "chat">("marketplace");
   
-  // Active state lists
+  // Active state lists synchronized with overseasStore
   const [jobs, setJobs] = useState<Job[]>([]);
   const [applications, setApplications] = useState<JobApplication[]>([]);
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [notifications, setNotifications] = useState<OverseasNotification[]>([]);
   const [reviews, setReviews] = useState<OverseasReview[]>([]);
+  const [savedJobs, setSavedJobs] = useState<string[]>([]);
   
+  // Local active chat system
+  const [chatAgencyId, setChatAgencyId] = useState<string>("v7");
+  const [chatMessages, setChatMessages] = useState<Array<{
+    id: string;
+    sender: "applicant" | "agency";
+    text?: string;
+    image?: string;
+    docName?: string;
+    voiceDuration?: string;
+    timestamp: string;
+  }>>([
+    { id: "1", sender: "agency", text: "ሰላም! ይህ ከጂጂ ምልመላ ኤጀንሲ ነው። ፓስፖርትዎን እና Fayda ዲጂታል መታወቂያዎን በሲስተሙ ካረጋገጡ በኋላ ወዲያውኑ ቃለ-መጠይቅ እናስይዛለን።", timestamp: "9:30 AM" },
+    { id: "2", sender: "applicant", text: "እንደምን አደሩ፣ ፓስፖርቴን ወደ ሲስተሙ ጭኛለሁ። መቼ ነው የቃለ መጠይቅ ቀጠሮው?", timestamp: "9:32 AM" },
+    { id: "3", sender: "agency", text: "በጣም ግሩም ነው! ሰነዶችዎን መርምረን በ30 ደቂቃ ውስጥ መልስ እንሰጣለን።", timestamp: "9:35 AM" }
+  ]);
+  const [inputText, setInputText] = useState("");
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordTime, setRecordTime] = useState(0);
+
+  // Smart CV Builder States
+  const [cvData, setCvData] = useState({
+    fullName: "Selamawit Tekle",
+    email: "selamawit.tekle@everyzone.com",
+    phone: "+251 912 345 678",
+    city: "Addis Ababa, Ethiopia",
+    education: "Diploma in Food Preparation & Pastry Arts - National Hospitality Institute",
+    experience: "2 Years Assistant Pastry Chef at Hyatt Regency Addis Ababa",
+    skills: "Pastry & Baking, Cake Decoration, Sanitation Standards, Inventory Control",
+    languages: "Amharic (Native), English (Conversational), Arabic (Basic)",
+    certificates: "COC Level III Pastry Certified, First Aid Certificate"
+  });
+  const [isSavingCV, setIsSavingCV] = useState(false);
+
   // Loading & status alerts
   const [isLoading, setIsLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -51,6 +86,7 @@ export default function OverseasEmploymentModule({ isDarkMode, lang }: OverseasE
 
   // Application wizard state
   const [applyingJob, setApplyingJob] = useState<Job | null>(null);
+  const [useSmartCV, setUseSmartCV] = useState(true);
   const [appNotes, setAppNotes] = useState("");
   const [uploadedFiles, setUploadedFiles] = useState<{
     passport?: { name: string; url: string };
@@ -69,7 +105,7 @@ export default function OverseasEmploymentModule({ isDarkMode, lang }: OverseasE
   const [scamAgencyId, setScamAgencyId] = useState("");
   const [scamDescription, setScamDescription] = useState("");
 
-  // New Job formulation input (Agency mode)
+  // Agency formulation input (Agency mode)
   const [newJobTitle, setNewJobTitle] = useState("");
   const [newJobEmployer, setNewJobEmployer] = useState("");
   const [newJobCategory, setNewJobCategory] = useState<JobCategory>("Hotel");
@@ -92,13 +128,29 @@ export default function OverseasEmploymentModule({ isDarkMode, lang }: OverseasE
   // Selected active Agency for Agency mode
   const [currentAgencyId, setCurrentAgencyId] = useState("v7"); // default as Gigi Placements
 
+  // Selected Country for Countries view Detail
+  const [selectedCountryObj, setSelectedCountryObj] = useState<any | null>(null);
+
   // Fetch initial datasets
   useEffect(() => {
     loadOverseasData();
   }, [activeRole, applicantTab]);
 
+  // Synchronize dynamic role switcher from quick access dashboard bar
+  useEffect(() => {
+    const handleRoleOverride = () => {
+      const override = localStorage.getItem('ez_overseas_role_override');
+      if (override === 'agency') {
+        setActiveRole('agency');
+        localStorage.removeItem('ez_overseas_role_override');
+      }
+    };
+    handleRoleOverride(); // run on mount
+    window.addEventListener('ez_overseas_role_change', handleRoleOverride);
+    return () => window.removeEventListener('ez_overseas_role_change', handleRoleOverride);
+  }, []);
+
   const loadOverseasData = () => {
-    // Sync React states to overseasStore arrays for true live interaction
     setJobs([...overseasStore.jobs]);
     setApplications([...overseasStore.applications]);
     setInterviews([...overseasStore.interviews]);
@@ -116,6 +168,40 @@ export default function OverseasEmploymentModule({ isDarkMode, lang }: OverseasE
     setTimeout(() => setErrorMsg(null), 4000);
   };
 
+  // Profile Completion Percentage Calculation
+  const calculateProfileCompletion = () => {
+    let score = 30; // base score
+    if (cvData.education) score += 15;
+    if (cvData.experience) score += 15;
+    if (cvData.skills) score += 15;
+    if (cvData.certificates) score += 15;
+    if (uploadedFiles.passport || cvData.phone) score += 10;
+    return Math.min(score, 100);
+  };
+
+  // Toggle Job Bookmark/Save
+  const toggleSaveJob = (jobId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (savedJobs.includes(jobId)) {
+      setSavedJobs(prev => prev.filter(id => id !== jobId));
+      showSuccess(lang === 'en' ? "Job removed from bookmarks." : "ስራው ከምልክት ማድረጊያ ተሰርዟል።");
+    } else {
+      setSavedJobs(prev => [...prev, jobId]);
+      showSuccess(lang === 'en' ? "Job saved successfully to bookmarks." : "ስራው በተሳካ ሁኔታ ተቀምጧል።");
+    }
+  };
+
+  // Handle PDF Simulation Download
+  const handleDownloadCV = () => {
+    showSuccess(lang === 'en' ? "Generating certified PDF layout..." : "ህጋዊ የሲቪ ሰነድ በመዘጋጀት ላይ ነው...");
+    setTimeout(() => {
+      const link = document.createElement("a");
+      link.href = "#";
+      link.setAttribute("download", `EveryZone_SmartCV_${cvData.fullName.replace(/\s+/g, '_')}.pdf`);
+      showSuccess(lang === 'en' ? "🎉 Smart CV downloaded successfully!" : "🎉 ሲቪዎ በተሳካ ሁኔታ ወርዷል!");
+    }, 1500);
+  };
+
   // Simulate file upload with premium visual progress
   const handleSimulateUpload = (docType: "passport" | "cv" | "nationalId" | "medical" | "experience", e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -129,18 +215,18 @@ export default function OverseasEmploymentModule({ isDarkMode, lang }: OverseasE
         [docType]: { name: file.name, url: simulatedUrl }
       }));
       setIsUploading(null);
-      showSuccess(`✅ Secure encrypted upload of ${file.name} complete.`);
+      showSuccess(lang === 'en' ? `✅ Secure encrypted upload of ${file.name} complete.` : `✅ የ ${file.name} ሰነድ በምስጢር ተቀምጧል።`);
     }, 1500);
   };
 
-  // Perform Application Submission
+  // Submit Application
   const handleApplySubmit = () => {
     if (!applyingJob) return;
 
-    if (!uploadedFiles.passport || !uploadedFiles.cv) {
+    if (!uploadedFiles.passport) {
       showError(lang === 'en' 
-        ? "Uploading your Passport and CV is mandatory for Overseas placements." 
-        : "የውጭ አገር ስራ ለመቀጠር ፓስፖርት እና ሲቪ (CV) ማስገባት ግዴታ ነው።"
+        ? "Uploading your Biometric Passport is mandatory for placements." 
+        : "የውጭ አገር ስራ ለመቀጠር ፓስፖርት ማስገባት ግዴታ ነው።"
       );
       return;
     }
@@ -157,26 +243,26 @@ export default function OverseasEmploymentModule({ isDarkMode, lang }: OverseasE
       stage: "Applied",
       documents: {
         passport: uploadedFiles.passport.name,
-        cv: uploadedFiles.cv.name,
-        nationalId: uploadedFiles.nationalId?.name,
-        medicalCertificate: uploadedFiles.medical?.name,
+        cv: useSmartCV ? `Smart_CV_${cvData.fullName.replace(/\s+/g, '_')}.pdf` : (uploadedFiles.cv?.name || "Manual_Resume.pdf"),
+        nationalId: uploadedFiles.nationalId?.name || "Verified_Fayda_ID.png",
+        medicalCertificate: uploadedFiles.medical?.name || "Pending_Verification_Doc",
         experienceLetter: uploadedFiles.experience?.name
       },
-      notes: appNotes,
+      notes: appNotes || `Applied using Every-Zone Smart CV Builder. Ready for deployment.`,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
 
-    // Save to the in-memory global store
+    // Save to global in-memory store
     overseasStore.applications.unshift(newApp);
 
-    // Add applicant notification
+    // Create notifications
     const newNotif: OverseasNotification = {
       id: `NTF-${Math.floor(1000 + Math.random() * 9000)}`,
       userId: mockUserId,
       type: "Application Submitted",
-      title: "ማመልከቻዎ በተሳካ ሁኔታ ገብቷል / Application Submitted",
-      message: `Your application for "${applyingJob.title}" has been successfully logged with ${applyingJob.agencyName}. Your unique tracking reference is: ${trackingNumber}`,
+      title: "ማመልከቻዎ በተሳካ ሁኔታ ገብቷል / Application Received",
+      message: `Your tracking code: ${trackingNumber} for ${applyingJob.title} is now under review.`,
       isRead: false,
       createdAt: new Date().toISOString()
     };
@@ -185,32 +271,32 @@ export default function OverseasEmploymentModule({ isDarkMode, lang }: OverseasE
     loadOverseasData();
     setApplyingJob(null);
     setAppNotes("");
-    setUploadedFiles({});
-    showSuccess(`🎉 ${lang === 'en' ? 'Application logged!' : 'ማመልከቻው ገብቷል!'} Ref: ${trackingNumber}`);
+    showSuccess(lang === 'en' ? `🎉 Placed! Reference Track Code: ${trackingNumber}` : `🎉 ማመልከቻው ገብቷል! መከታተያ ኮድ፡ ${trackingNumber}`);
   };
 
-  // Leave Review Form submit
+  // Submit Review Form
   const handlePostReview = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedJob) return;
+    if (!userReviewComment) return;
 
+    const targetAgency = selectedJob?.agencyId || chatAgencyId || "v7";
     const newReview: OverseasReview = {
       id: `REV-${Math.floor(10000 + Math.random() * 90000)}`,
-      agencyId: selectedJob.agencyId,
+      agencyId: targetAgency,
       userId: mockUserId,
       userName: mockUserName,
       rating: userReviewRating,
-      comment: userReviewComment || "Excellent, prompt legal support and verification checks.",
+      comment: userReviewComment,
       createdAt: new Date().toISOString()
     };
 
     overseasStore.reviews.unshift(newReview);
     setUserReviewComment("");
     loadOverseasData();
-    showSuccess("⭐️ Review submitted and verified successfully.");
+    showSuccess(lang === 'en' ? "⭐️ Review submitted successfully. Anti-Scam protection updated." : "⭐️ ግምገማዎ ገብቷል። የአጭበርባሪ መከላከያ መዝገብ ተዘምኗል።");
   };
 
-  // Fraud scam report
+  // Report scam
   const handleReportScam = (e: React.FormEvent) => {
     e.preventDefault();
     const targetAgency = scamAgencyId || selectedJob?.agencyId || "v7";
@@ -226,25 +312,85 @@ export default function OverseasEmploymentModule({ isDarkMode, lang }: OverseasE
 
     overseasStore.fraudReports.unshift(newReport);
     
-    // Auto suspension triggers if reports are logged
+    // Auto suspension triggers if multiple reports logged
     const totalReports = overseasStore.fraudReports.filter(r => r.agencyId === targetAgency).length;
     if (totalReports >= 2) {
       overseasStore.suspendedAgencies.add(targetAgency);
       overseasStore.jobs.forEach(j => {
-        if (j.agencyId === targetAgency) {
-          j.status = "SUSPENDED";
-        }
+        if (j.agencyId === targetAgency) j.status = "SUSPENDED";
       });
-      showSuccess(`🚨 Safety Lock Alert: This agency has been automatically suspended pending investigation.`);
+      showSuccess(`🚨 SAFETY SUSPENSION: Agency ${targetAgency} is restricted from Every-zone due to repeated fraud audits.`);
     } else {
-      showSuccess("⚠️ Fraud and scam report successfully sent to Ministry of Labor auditing unit.");
+      showSuccess(lang === 'en' ? "⚠️ Report filed to Ministry of Labor auditing unit." : "⚠️ ሪፖርቱ ለሰራተኛና ማህበራዊ ጉዳይ ሚኒስቴር ተልኳል።");
     }
 
     setScamDescription("");
     loadOverseasData();
   };
 
-  // AGENCY ACTION: Publish new job listing
+  // Voice recording simulation
+  const toggleRecording = () => {
+    if (isRecording) {
+      setIsRecording(false);
+      // add voice message to chat
+      const newMsg = {
+        id: Date.now().toString(),
+        sender: "applicant" as const,
+        voiceDuration: "0:12",
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setChatMessages(prev => [...prev, newMsg]);
+      showSuccess(lang === 'en' ? "Voice message recorded and sent." : "የድምጽ መልዕክት ተልኳል።");
+      // simulated response
+      simulateAgencyReply();
+    } else {
+      setIsRecording(true);
+      setRecordTime(0);
+    }
+  };
+
+  useEffect(() => {
+    let interval: any;
+    if (isRecording) {
+      interval = setInterval(() => {
+        setRecordTime(prev => prev + 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isRecording]);
+
+  // Send Text Message
+  const handleSendMessage = () => {
+    if (!inputText.trim()) return;
+
+    const newMsg = {
+      id: Date.now().toString(),
+      sender: "applicant" as const,
+      text: inputText,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    setChatMessages(prev => [...prev, newMsg]);
+    setInputText("");
+    
+    // Auto-respond simulation
+    simulateAgencyReply();
+  };
+
+  const simulateAgencyReply = () => {
+    setTimeout(() => {
+      const responseText = "እሺ፣ ሰነዶችዎን እየተመለከትን ነው። በቅርቡ በስልክ ወይም እዚሁ ቻት ላይ እናሳውቅዎታለን።";
+      const replyMsg = {
+        id: (Date.now() + 1).toString(),
+        sender: "agency" as const,
+        text: responseText,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setChatMessages(prev => [...prev, replyMsg]);
+    }, 2000);
+  };
+
+  // Publish Job
   const handleAgencyPublish = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -283,27 +429,24 @@ export default function OverseasEmploymentModule({ isDarkMode, lang }: OverseasE
         gender: newJobGender,
         education: "High School / Diploma",
         experience: newJobExperience,
-        language: "English / Basic Arabic"
+        language: "English / Arabic"
       },
-      benefits: ["Paid Flights", "Shared Air-conditioned Studio", "Tips Share"],
+      benefits: ["Paid Flights", "Free Shared Studio Accommodation", "Performance Tips"],
       description: newJobDesc,
       status: "ACTIVE",
       createdAt: new Date().toISOString()
     };
 
     overseasStore.jobs.unshift(newJob);
-    
-    // Reset inputs
     setNewJobTitle("");
     setNewJobEmployer("");
     setNewJobCity("");
     setNewJobDesc("");
-
     loadOverseasData();
     showSuccess("💼 Vacancy published live to Every-zone Marketplace!");
   };
 
-  // AGENCY ACTION: Advance candidate application stage
+  // Change Candidate Stage from CRM
   const handleAdvanceStage = (appId: string, nextStage: ApplicationStage) => {
     const app = overseasStore.applications.find(a => a.id === appId);
     if (!app) return;
@@ -311,32 +454,131 @@ export default function OverseasEmploymentModule({ isDarkMode, lang }: OverseasE
     app.stage = nextStage;
     app.updatedAt = new Date().toISOString();
 
-    // Spawn matching notification
+    // Add applicant notification
     const newNotif: OverseasNotification = {
       id: `NTF-${Math.floor(1000 + Math.random() * 9000)}`,
       userId: app.applicantId,
       type: "Document Approved",
-      title: `የማመልከቻ ደረጃ ማሻሻያ / Stage Updated to: ${nextStage}`,
-      message: `Excellent news! Your application ${app.id} for "${app.jobTitle}" has progressed to ${nextStage}.`,
+      title: `የማመልከቻ ደረጃ ተለውጧል / Stage Updated to: ${nextStage}`,
+      message: `Excellent news! Your application ${app.id} for "${app.jobTitle}" is updated to ${nextStage}.`,
       isRead: false,
       createdAt: new Date().toISOString()
     };
     overseasStore.notifications.unshift(newNotif);
 
     loadOverseasData();
-    showSuccess(`Stage advanced to ${nextStage}`);
+    showSuccess(`Stage successfully advanced to: ${nextStage}`);
   };
 
-  // Filtering calculation
+  // Countries Dataset Requirements
+  const destinationCountriesData = [
+    {
+      id: "uae",
+      name: "United Arab Emirates",
+      nameAm: "የተባበሩት አረብ ኤምሬትስ (ዱባይ)",
+      flag: "🇦🇪",
+      salary: "1,200 - 5,500 AED",
+      hours: "8 - 9 hours / day",
+      contract: "2 Years (Renewable)",
+      accommodation: "Included (ነፃ መኖሪያ ቤት)",
+      food: "Included or Allowance provided",
+      transport: "Free Shuttle Provided",
+      visaRequirements: "Fayda Digital ID, Biometric Passport, Police Clearance, Basic English or Arabic, Ministry medical approval."
+    },
+    {
+      id: "poland",
+      name: "Poland",
+      nameAm: "ፖላንድ (አውሮፓ)",
+      flag: "🇵🇱",
+      salary: "1,800 - 3,200 EUR",
+      hours: "8 hours / day (5 days/week)",
+      contract: "2 Years (EU Work Permit Route)",
+      accommodation: "Subsidized or Allowance provided",
+      food: "Self-catering",
+      transport: "Public transport allowance",
+      visaRequirements: "Schengen compliance audit, Degree/Diploma verification, Professional COC certificates, Police check."
+    },
+    {
+      id: "germany",
+      name: "Germany",
+      nameAm: "ጀርመን (አውሮፓ)",
+      flag: "🇩🇪",
+      salary: "2,400 - 4,000 EUR",
+      hours: "7.5 - 8 hours / day",
+      contract: "3 Years (German Blue Card)",
+      accommodation: "Assisted Housing (በድርጅት የሚመቻች)",
+      food: "Subsidized staff canteen",
+      transport: "Monthly transit pass included",
+      visaRequirements: "German B1 language proficiency, Certified nursing/technical credentials, Federal Labor authorization."
+    },
+    {
+      id: "saudi",
+      name: "Saudi Arabia",
+      nameAm: "ሳዑዲ አረቢያ",
+      flag: "🇸🇦",
+      salary: "1,500 - 3,500 SAR",
+      hours: "8 hours / day",
+      contract: "2 Years",
+      accommodation: "Fully Included",
+      food: "Included",
+      transport: "Free company transport",
+      visaRequirements: "Medical fit check certificate, Musaned alignment approval, Fayda ID validation."
+    },
+    {
+      id: "qatar",
+      name: "Qatar",
+      nameAm: "ኳታር",
+      flag: "🇶🇦",
+      salary: "1,800 - 4,500 QAR",
+      hours: "8 hours / day",
+      contract: "2 Years",
+      accommodation: "Company Managed Villas",
+      food: "Catered Staff Meals",
+      transport: "Included",
+      visaRequirements: "Biometric Passport, Labor Contract endorsement, Qatari medical screening."
+    }
+  ];
+
+  // Verified Agencies list
+  const registeredAgencies = [
+    {
+      id: "v7",
+      name: "Gigi International Placements (ጂጂ ወኪል)",
+      license: "MEA-2026-64120",
+      rating: "4.9",
+      response: "< 1 Hour",
+      placements: "2,450 workers",
+      contact: "+251 11 654 0910",
+      verified: true
+    },
+    {
+      id: "v8",
+      name: "Horn-of-Africa Employment Co. (ቀንድ ኤጀንሲ)",
+      license: "MEA-2026-11002",
+      rating: "4.7",
+      response: "< 2 Hours",
+      placements: "1,820 workers",
+      contact: "+251 11 412 8092",
+      verified: true
+    },
+    {
+      id: "v9",
+      name: "Red Sea Oversea Placements",
+      license: "MEA-2026-90412",
+      rating: "4.5",
+      response: "< 4 Hours",
+      placements: "940 workers",
+      contact: "+251 11 511 2309",
+      verified: false
+    }
+  ];
+
+  // Filtering calculations
   const filteredJobs = jobs.filter(job => {
     if (job.status !== "ACTIVE") return false;
-
     if (filterVerifiedOnly && !job.isAgencyVerified) return false;
-    
     if (filterCountry !== "all" && job.country !== filterCountry) return false;
-    
     if (filterCategory !== "all" && job.category !== filterCategory) return false;
-    
     if (filterGender !== "all" && job.requirements.gender !== "Any" && job.requirements.gender !== filterGender) return false;
 
     if (searchQuery) {
@@ -348,7 +590,6 @@ export default function OverseasEmploymentModule({ isDarkMode, lang }: OverseasE
         job.agencyName.toLowerCase().includes(q)
       );
     }
-
     return true;
   });
 
@@ -368,15 +609,15 @@ export default function OverseasEmploymentModule({ isDarkMode, lang }: OverseasE
   };
 
   return (
-    <div className="space-y-4">
-      {/* SUCCESS / ERROR ALERTS */}
+    <div className="space-y-4 max-w-7xl mx-auto text-left">
+      {/* ALERTS */}
       <AnimatePresence>
         {successMsg && (
           <motion.div 
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="p-3.5 bg-emerald-950/90 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-semibold flex items-center gap-2"
+            className="p-3.5 bg-emerald-950/90 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-semibold flex items-center gap-2 z-50 relative"
           >
             <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
             <span>{successMsg}</span>
@@ -387,7 +628,7 @@ export default function OverseasEmploymentModule({ isDarkMode, lang }: OverseasE
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="p-3.5 bg-rose-950/90 text-rose-300 border border-rose-500/40 rounded-xl text-xs font-semibold flex items-center gap-2"
+            className="p-3.5 bg-rose-950/90 text-rose-300 border border-rose-500/40 rounded-xl text-xs font-semibold flex items-center gap-2 z-50 relative"
           >
             <AlertTriangle size={16} className="text-rose-400 shrink-0" />
             <span>{errorMsg}</span>
@@ -395,90 +636,128 @@ export default function OverseasEmploymentModule({ isDarkMode, lang }: OverseasE
         )}
       </AnimatePresence>
 
-      {/* TOP PREMIUM PORTAL ROLE CONTROLLER (Applicant Workspace vs Agency Workspace) */}
-      <div className="flex bg-neutral-900 border border-amber-500/15 p-1 rounded-2xl">
+      {/* PORTAL SELECTOR: APPLICANT VS AGENCY CLIENT-SIDE CRM */}
+      <div className="flex bg-zinc-950 border border-amber-500/15 p-1 rounded-2xl shadow-lg">
         <button 
           onClick={() => { setActiveRole("applicant"); setSelectedJob(null); }}
-          className={`flex-1 py-2 text-xs font-black tracking-wide rounded-xl transition-all flex items-center justify-center gap-2 ${
+          className={`flex-1 py-2 text-xs font-black tracking-wider rounded-xl transition-all flex items-center justify-center gap-2 ${
             activeRole === "applicant"
-              ? "bg-[#C5A059] text-stone-950 shadow-lg font-bold"
+              ? "bg-[#C5A059] text-stone-950 shadow-md font-extrabold scale-[1.01]"
               : "text-zinc-400 hover:text-white"
           }`}
         >
           <User size={13} />
-          {lang === 'en' ? "Applicant Portal" : "የስራ ፈላጊ ፖርታል"}
+          {lang === 'en' ? "Applicant Workspace" : "የስራ ፈላጊ የስራ ክፍል"}
         </button>
         <button 
           onClick={() => { setActiveRole("agency"); setSelectedJob(null); }}
-          className={`flex-1 py-2 text-xs font-black tracking-wide rounded-xl transition-all flex items-center justify-center gap-2 ${
+          className={`flex-1 py-2 text-xs font-black tracking-wider rounded-xl transition-all flex items-center justify-center gap-2 ${
             activeRole === "agency"
-              ? "bg-[#C5A059] text-stone-950 shadow-lg font-bold"
+              ? "bg-[#C5A059] text-stone-950 shadow-md font-extrabold scale-[1.01]"
               : "text-zinc-400 hover:text-white"
           }`}
         >
           <Briefcase size={13} />
-          {lang === 'en' ? "Agency Workspace" : "የወኪል የስራ ክፍል"}
+          {lang === 'en' ? "Agency CRM Dashboard" : "የኤጀንሲ አስተዳደር ፖርታል"}
         </button>
       </div>
 
-      {/* =========================================================================
-          APPLICANT PORTAL
-          ========================================================================= */}
+      {/* APPLICANT INTERFACE */}
       {activeRole === "applicant" && (
         <div className="space-y-4">
-          {/* APPLICANT SCREEN NAV TABS */}
-          <div className="flex gap-2">
+          {/* HORIZONTAL PREMIUM TABS */}
+          <div className="flex gap-1.5 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
             <button
               onClick={() => setApplicantTab("marketplace")}
-              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-2 rounded-xl text-[11px] font-black shrink-0 transition-all border flex items-center gap-1 cursor-pointer ${
                 applicantTab === "marketplace"
-                  ? "bg-amber-500/15 border border-amber-500 text-amber-400"
-                  : "bg-neutral-900 text-zinc-400 border border-transparent"
+                  ? "bg-amber-500/15 border-amber-500 text-amber-400"
+                  : "bg-zinc-900/50 border-zinc-800 text-zinc-400 hover:text-white"
               }`}
             >
-              🌐 Employment Marketplace
+              🌐 {lang === 'en' ? "Job Listings" : "ክፍት ስራዎች"}
             </button>
             <button
-              onClick={() => setApplicantTab("my_portal")}
-              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
-                applicantTab === "my_portal"
-                  ? "bg-amber-500/15 border border-amber-500 text-amber-400"
-                  : "bg-neutral-900 text-zinc-400 border border-transparent"
+              onClick={() => setApplicantTab("dashboard")}
+              className={`px-3 py-2 rounded-xl text-[11px] font-black shrink-0 transition-all border flex items-center gap-1.5 cursor-pointer ${
+                applicantTab === "dashboard"
+                  ? "bg-amber-500/15 border-amber-500 text-amber-400"
+                  : "bg-zinc-900/50 border-zinc-800 text-zinc-400 hover:text-white"
               }`}
             >
-              👤 My Dashboard & Tracker
+              📊 {lang === 'en' ? "My Dashboard" : "የእኔ ዴሽቦርድ"}
               {applications.length > 0 && (
-                <span className="bg-amber-500 text-stone-950 text-[9px] px-1.5 py-0.5 rounded-full font-black">
+                <span className="bg-amber-500 text-zinc-950 text-[9px] px-1.5 py-0.2 rounded-full font-black">
                   {applications.length}
                 </span>
               )}
             </button>
+            <button
+              onClick={() => setApplicantTab("smart_cv")}
+              className={`px-3 py-2 rounded-xl text-[11px] font-black shrink-0 transition-all border flex items-center gap-1 cursor-pointer ${
+                applicantTab === "smart_cv"
+                  ? "bg-amber-500/15 border-amber-500 text-amber-400"
+                  : "bg-zinc-900/50 border-zinc-800 text-zinc-400 hover:text-white"
+              }`}
+            >
+              📄 {lang === 'en' ? "Smart CV Builder" : "ሲቪ መፍጠሪያ"}
+            </button>
+            <button
+              onClick={() => setApplicantTab("countries")}
+              className={`px-3 py-2 rounded-xl text-[11px] font-black shrink-0 transition-all border flex items-center gap-1 cursor-pointer ${
+                applicantTab === "countries"
+                  ? "bg-amber-500/15 border-amber-500 text-amber-400"
+                  : "bg-zinc-900/50 border-zinc-800 text-zinc-400 hover:text-white"
+              }`}
+            >
+              🌍 {lang === 'en' ? "Target Countries" : "ሀገራት ዝርዝር"}
+            </button>
+            <button
+              onClick={() => setApplicantTab("agencies")}
+              className={`px-3 py-2 rounded-xl text-[11px] font-black shrink-0 transition-all border flex items-center gap-1 cursor-pointer ${
+                applicantTab === "agencies"
+                  ? "bg-amber-500/15 border-amber-500 text-amber-400"
+                  : "bg-zinc-900/50 border-zinc-800 text-zinc-400 hover:text-white"
+              }`}
+            >
+              🏢 {lang === 'en' ? "Agencies Directory" : "ኤጀንሲዎች"}
+            </button>
+            <button
+              onClick={() => setApplicantTab("chat")}
+              className={`px-3 py-2 rounded-xl text-[11px] font-black shrink-0 transition-all border flex items-center gap-1 cursor-pointer ${
+                applicantTab === "chat"
+                  ? "bg-amber-500/15 border-amber-500 text-amber-400"
+                  : "bg-zinc-900/50 border-zinc-800 text-zinc-400 hover:text-white"
+              }`}
+            >
+              💬 {lang === 'en' ? "Direct Agent Chat" : "ቀጥታ ውይይት"}
+            </button>
           </div>
 
-          {/* TAB 1: MARKETPLACE */}
+          {/* SUB-TAB 1: JOB MARKETPLACE */}
           {applicantTab === "marketplace" && (
             <div className="space-y-4">
-              {/* SEARCH ENGINE & DETAILED FILTER ACCORDION */}
-              <div className="bg-neutral-950 border border-zinc-800 p-4 rounded-2xl space-y-3">
+              {/* FILTERS & SEARCH */}
+              <div className="bg-zinc-950 border border-zinc-800/80 p-4 rounded-3xl space-y-3 shadow-xl">
                 <div className="relative">
-                  <Search size={14} className="absolute left-3.5 top-3 text-zinc-400" />
+                  <Search size={14} className="absolute left-3.5 top-3.5 text-zinc-400" />
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder={lang === 'en' ? "Search certified vacancies (e.g. Dubai Driver, Nurse)..." : "የተረጋገጡ የስራ ማስታወቂያዎችን ይፈልጉ..."}
-                    className="w-full bg-neutral-900 border border-zinc-800 rounded-xl pl-9 pr-4 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500"
+                    placeholder={lang === 'en' ? "Search certified vacancies (e.g., Pastry, Driver, Europe)..." : "የተረጋገጡ የውጭ አገር ስራዎችን እዚህ ይፈልጉ..."}
+                    className="w-full bg-zinc-900/60 border border-zinc-800 rounded-2xl pl-9 pr-4 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500 font-sans"
                   />
                 </div>
 
                 {/* FILTER GRID */}
                 <div className="grid grid-cols-3 gap-2 text-[11px]">
                   <div>
-                    <label className="text-[10px] text-zinc-500 block mb-1">Destination</label>
+                    <label className="text-[10px] text-zinc-500 block mb-1 font-extrabold uppercase">Destination</label>
                     <select
                       value={filterCountry}
                       onChange={(e) => setFilterCountry(e.target.value)}
-                      className="w-full bg-neutral-900 border border-zinc-800 rounded-lg p-1.5 text-zinc-300 focus:outline-none"
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-2 text-zinc-300 focus:outline-none"
                     >
                       <option value="all">All Countries</option>
                       <option value="United Arab Emirates">Dubai / UAE 🇦🇪</option>
@@ -488,11 +767,11 @@ export default function OverseasEmploymentModule({ isDarkMode, lang }: OverseasE
                   </div>
 
                   <div>
-                    <label className="text-[10px] text-zinc-500 block mb-1">Gender Focus</label>
+                    <label className="text-[10px] text-zinc-500 block mb-1 font-extrabold uppercase">Gender Focus</label>
                     <select
                       value={filterGender}
                       onChange={(e) => setFilterGender(e.target.value)}
-                      className="w-full bg-neutral-900 border border-zinc-800 rounded-lg p-1.5 text-zinc-300 focus:outline-none"
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-2 text-zinc-300 focus:outline-none"
                     >
                       <option value="all">Any Gender</option>
                       <option value="Male">Male Only</option>
@@ -501,11 +780,11 @@ export default function OverseasEmploymentModule({ isDarkMode, lang }: OverseasE
                   </div>
 
                   <div>
-                    <label className="text-[10px] text-zinc-500 block mb-1">Job Category</label>
+                    <label className="text-[10px] text-zinc-500 block mb-1 font-extrabold uppercase">Sector</label>
                     <select
                       value={filterCategory}
                       onChange={(e) => setFilterCategory(e.target.value)}
-                      className="w-full bg-neutral-900 border border-zinc-800 rounded-lg p-1.5 text-zinc-300 focus:outline-none"
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-2 text-zinc-300 focus:outline-none"
                     >
                       <option value="all">All Sectors</option>
                       <option value="Hotel">Hotel & Catering</option>
@@ -516,7 +795,7 @@ export default function OverseasEmploymentModule({ isDarkMode, lang }: OverseasE
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 border-t border-zinc-900 pt-2 text-[10.5px]">
+                <div className="flex items-center gap-2 border-t border-zinc-900 pt-2.5 text-[11px]">
                   <input
                     type="checkbox"
                     id="verified_agencies"
@@ -526,249 +805,330 @@ export default function OverseasEmploymentModule({ isDarkMode, lang }: OverseasE
                   />
                   <label htmlFor="verified_agencies" className="text-zinc-400 flex items-center gap-1 cursor-pointer select-none">
                     <Shield size={11} className="text-emerald-500" />
-                    {lang === 'en' ? "Show only licensed Ministry of Labor certified agencies" : "በቅጥር ኤጀንሲ ሰርተፍኬት የተረጋገጡ ብቻ አሳይ"}
+                    {lang === 'en' ? "Show only legally certified Ministry of Labor placement agencies" : "በቅጥር ኤጀንሲ ሰርተፍኬት የተረጋገጡ ብቻ አሳይ"}
                   </label>
                 </div>
               </div>
 
-              {/* VACANCIES DISPLAY LIST */}
+              {/* LISTINGS GRID */}
               <div className="space-y-3">
                 <div className="flex justify-between items-center px-1">
-                  <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1.5">
+                  <h4 className="text-[11px] font-black text-white uppercase tracking-wider flex items-center gap-1.5">
                     <TrendingUp size={13} className="text-amber-500" />
-                    Available Contracts ({filteredJobs.length})
+                    {lang === 'en' ? `Available Contracts (${filteredJobs.length})` : `ክፍት የስራ ውሎች (${filteredJobs.length})`}
                   </h4>
-                  <span className="text-[10px] text-zinc-500 font-mono">Real-time matching active</span>
+                  <span className="text-[10px] text-zinc-500 font-mono">End-to-End Audit Protection</span>
                 </div>
 
                 {filteredJobs.length === 0 ? (
-                  <div className="text-center py-12 bg-neutral-950 border border-dashed border-zinc-800 rounded-2xl space-y-2">
+                  <div className="text-center py-12 bg-zinc-950 border border-dashed border-zinc-800 rounded-3xl space-y-2">
                     <Briefcase className="mx-auto text-zinc-600" size={28} />
-                    <p className="text-xs text-zinc-400 font-medium">No active certified jobs match this filter.</p>
+                    <p className="text-xs text-zinc-400 font-semibold">No active audited vacancies match criteria.</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 gap-3">
-                    {filteredJobs.map(job => (
-                      <motion.div
-                        key={job.id}
-                        whileHover={{ y: -2 }}
-                        onClick={() => setSelectedJob(job)}
-                        className="bg-neutral-950 hover:bg-zinc-900/90 border border-zinc-800 hover:border-amber-500/40 p-3.5 rounded-2xl cursor-pointer transition-all flex flex-col justify-between space-y-3 relative group"
-                      >
-                        {/* HEADER: verified BADGE & COUNTRY */}
-                        <div className="flex justify-between items-start">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-lg leading-none">{job.countryFlag || "✈️"}</span>
-                            <div>
-                              <span className="text-[10px] text-zinc-400 block font-mono">{job.country} • {job.city}</span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {filteredJobs.map(job => {
+                      const isSaved = savedJobs.includes(job.id);
+                      return (
+                        <motion.div
+                          key={job.id}
+                          whileHover={{ y: -2 }}
+                          onClick={() => setSelectedJob(job)}
+                          className="bg-zinc-950 hover:bg-zinc-900 border border-zinc-800/80 hover:border-[#C5A059]/40 p-4 rounded-3xl cursor-pointer transition-all flex flex-col justify-between space-y-3 relative group shadow-md"
+                        >
+                          {/* FLAG AND ACCREDITATION */}
+                          <div className="flex justify-between items-start">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-2xl leading-none">{job.countryFlag || "✈️"}</span>
+                              <div>
+                                <span className="text-[9.5px] text-zinc-400 block font-mono uppercase tracking-wider">{job.country} • {job.city}</span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1.5">
+                              <button 
+                                onClick={(e) => toggleSaveJob(job.id, e)}
+                                className={`p-1.5 rounded-lg border transition-colors ${
+                                  isSaved 
+                                    ? "bg-rose-950/40 border-rose-500/30 text-rose-400" 
+                                    : "bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-white"
+                                }`}
+                              >
+                                <Heart size={11} fill={isSaved ? "currentColor" : "none"} />
+                              </button>
+                              <div className="bg-emerald-950 text-emerald-400 text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-lg border border-emerald-500/20 flex items-center gap-1">
+                                <Shield size={9} />
+                                {lang === 'en' ? "Verified Lic" : "ሕጋዊ"}
+                              </div>
                             </div>
                           </div>
 
-                          <div className="bg-emerald-950 text-emerald-400 text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
-                            <Shield size={9} />
-                            Verified Lic: {job.agencyLicense}
+                          {/* JOB TEXT */}
+                          <div>
+                            <h3 className="text-xs font-black text-white leading-normal group-hover:text-[#C5A059] transition-colors">
+                              {lang === 'en' ? job.title : (job.titleAm || job.title)}
+                            </h3>
+                            <p className="text-[10px] text-zinc-400 flex items-center gap-1 mt-1 font-sans">
+                              <Users size={11} className="text-amber-500" />
+                              {job.agencyName}
+                            </p>
                           </div>
-                        </div>
 
-                        {/* TITLE & AGENCY */}
-                        <div>
-                          <h3 className="text-sm font-black text-white leading-snug group-hover:text-amber-400 transition-colors">
-                            {job.title}
-                          </h3>
-                          <p className="text-[11px] text-zinc-400 flex items-center gap-1 mt-1 font-sans">
-                            <Users size={11} className="text-amber-500" />
-                            {job.agencyName}
-                          </p>
-                        </div>
+                          {/* METRICS */}
+                          <div className="grid grid-cols-2 gap-1.5 text-[10px] bg-zinc-900/50 p-2.5 rounded-xl border border-zinc-900">
+                            <div className="flex items-center gap-1 text-zinc-300">
+                              <DollarSign size={11} className="text-emerald-500" />
+                              <span>{lang === 'en' ? "Salary" : "ደመወዝ"}: <strong className="text-white font-black">{job.salary}</strong></span>
+                            </div>
+                            <div className="flex items-center gap-1 text-zinc-300">
+                              <Clock size={11} className="text-amber-500" />
+                              <span>{lang === 'en' ? "Contract" : "ውል"}: <strong className="text-white">{job.contractDuration}</strong></span>
+                            </div>
+                          </div>
 
-                        {/* METADATA CHIPS */}
-                        <div className="grid grid-cols-2 gap-2 text-[10.5px] bg-neutral-900 p-2.5 rounded-xl border border-zinc-900">
-                          <div className="flex items-center gap-1 text-zinc-300 font-medium">
-                            <DollarSign size={12} className="text-emerald-500" />
-                            <span>Salary: <strong className="text-white font-black">{job.salary}</strong></span>
+                          {/* FOOTER */}
+                          <div className="flex justify-between items-center pt-1 text-[10px]">
+                            <span className="text-zinc-500 uppercase tracking-widest font-mono text-[8px]">Deadline: {job.deadline}</span>
+                            <span className="text-[#C5A059] font-black flex items-center gap-0.5 uppercase tracking-wider group-hover:translate-x-1 transition-transform">
+                              {lang === 'en' ? "Apply Now" : "አሁኑኑ መዝገብ"}
+                              <ChevronRight size={12} />
+                            </span>
                           </div>
-                          <div className="flex items-center gap-1 text-zinc-300">
-                            <Clock size={12} className="text-amber-500" />
-                            <span>Duration: <strong className="text-white">{job.contractDuration}</strong></span>
-                          </div>
-                          <div className="flex items-center gap-1 text-zinc-300 col-span-2">
-                            <CheckCircle2 size={12} className="text-emerald-500" />
-                            <span>Housing & Medical: <strong className="text-emerald-400">Included (ነፃ)</strong></span>
-                          </div>
-                        </div>
-
-                        {/* BOTTOM ACTIONS */}
-                        <div className="flex justify-between items-center pt-1">
-                          <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-mono">Apply Deadline: {job.deadline}</span>
-                          <span className="text-[10px] text-amber-400 font-black flex items-center gap-1 uppercase tracking-wider group-hover:translate-x-1 transition-transform">
-                            Apply Now
-                            <ChevronRight size={12} />
-                          </span>
-                        </div>
-                      </motion.div>
-                    ))}
+                        </motion.div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
             </div>
           )}
 
-          {/* TAB 2: APPLICANT DASHBOARD (MY PORTAL) */}
-          {applicantTab === "my_portal" && (
+          {/* SUB-TAB 2: APPLICANT DASHBOARD */}
+          {applicantTab === "dashboard" && (
             <div className="space-y-4">
-              {/* COMPLIANCE ALERT */}
-              <div className="bg-neutral-950 border border-zinc-800 p-3.5 rounded-2xl flex items-start gap-2.5">
-                <ShieldAlert size={18} className="text-amber-500 shrink-0 mt-0.5 animate-pulse" />
-                <div className="text-[11px] text-zinc-300 leading-relaxed">
-                  <span className="font-extrabold text-amber-500 uppercase block tracking-wider mb-0.5">Government Regulatory Notice:</span>
-                  All applicants must upload their authorized biometric passport and federal police clearances. Fayda Digital National ID validation is authenticated instantly.
+              {/* TOP SUMMARY STATISTICS & COMPLIANCE METRICS */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {/* 1. Profile completion meter */}
+                <div className="bg-zinc-950 border border-zinc-800/80 p-4 rounded-3xl flex items-center gap-4 shadow-xl">
+                  <div className="relative flex items-center justify-center shrink-0">
+                    <svg className="w-16 h-16">
+                      <circle className="text-zinc-800" strokeWidth="6" stroke="currentColor" fill="transparent" r="26" cx="32" cy="32"/>
+                      <circle className="text-amber-500 transition-all duration-1000" strokeWidth="6" strokeDasharray={2 * Math.PI * 26} strokeDashoffset={2 * Math.PI * 26 * (1 - calculateProfileCompletion() / 100)} strokeLinecap="round" stroke="currentColor" fill="transparent" r="26" cx="32" cy="32"/>
+                    </svg>
+                    <span className="absolute text-xs font-black text-white font-mono">{calculateProfileCompletion()}%</span>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black text-white uppercase tracking-wider">{lang === 'en' ? "Profile Completion" : "የእርስዎ ፕሮፋይል ሙላት"}</h4>
+                    <p className="text-[10px] text-zinc-400 mt-0.5 leading-relaxed">
+                      {calculateProfileCompletion() < 90 
+                        ? (lang === 'en' ? "Complete your Smart CV to reach 100% and unlock fast visa tracks." : "ሲቪዎን በማጠናቀቅ 100% ያድርሱና ፈጣን ቪዛ ያግኙ።")
+                        : (lang === 'en' ? "Your profile is fully verified! Ready for quick job match." : "ፕሮፋይልዎ ተጠናቋል! ለስራ ዝግጁ ነዎት።")
+                      }
+                    </p>
+                  </div>
+                </div>
+
+                {/* 2. Passport Status */}
+                <div className="bg-zinc-950 border border-zinc-800/80 p-4 rounded-3xl flex items-center gap-3.5 shadow-xl">
+                  <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${uploadedFiles.passport ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400" : "bg-rose-500/10 border border-rose-500/20 text-rose-400"}`}>
+                    <FileCheck size={20} />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black text-white uppercase tracking-wider">{lang === 'en' ? "Passport Registry" : "የፓስፖርት ሁኔታ"}</h4>
+                    <span className="text-[9.5px] font-bold block mt-0.5">
+                      {uploadedFiles.passport 
+                        ? `✅ ${lang === 'en' ? "Verified & Encrypted" : "የተረጋገጠ"}` 
+                        : `⚠️ ${lang === 'en' ? "Not Uploaded Yet" : "እባክዎን ፓስፖርት ይጫኑ"}`
+                      }
+                    </span>
+                    <p className="text-[9px] text-zinc-500 font-mono mt-0.5">Biometric passport check</p>
+                  </div>
+                </div>
+
+                {/* 3. Medical & Visa Hub */}
+                <div className="bg-zinc-950 border border-zinc-800/80 p-4 rounded-3xl flex items-center gap-3.5 shadow-xl">
+                  <div className="w-11 h-11 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">
+                    <Activity size={20} />
+                  </div>
+                  <div className="text-[11px]">
+                    <h4 className="text-xs font-black text-white uppercase tracking-wider">{lang === 'en' ? "Medical & Visa Audit" : "የህክምና እና ቪዛ ሁኔታ"}</h4>
+                    <div className="flex gap-2 mt-1">
+                      <span className="bg-zinc-900 border border-zinc-800 px-1.5 py-0.5 rounded text-[8.5px] text-zinc-300">Med: <strong>Cleared ✅</strong></span>
+                      <span className="bg-zinc-900 border border-zinc-800 px-1.5 py-0.5 rounded text-[8.5px] text-zinc-300">Visa: <strong>Processing 🎫</strong></span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* TRACKING PROGRESS OF SUBMITTED APPLICATIONS */}
-              <div className="space-y-3">
-                <h4 className="text-xs font-black text-white uppercase tracking-wider">
-                  Submitted Placements ({applications.length})
-                </h4>
+              {/* COURIER-STYLE APPLICATION TRACKING LEDGER */}
+              <div className="bg-zinc-950 border border-zinc-800/80 p-5 rounded-3xl shadow-xl space-y-4">
+                <div className="flex justify-between items-center border-b border-zinc-900 pb-3">
+                  <h4 className="text-xs font-black text-white uppercase tracking-wider">
+                    {lang === 'en' ? "Live Placement Tracker" : "የቅጥር መከታተያ መዝገብ"}
+                  </h4>
+                  <span className="text-[10px] text-zinc-500 font-mono bg-zinc-900 px-2 py-0.5 rounded-lg border border-zinc-800">
+                    {applications.length} Placements Logged
+                  </span>
+                </div>
 
                 {applications.length === 0 ? (
-                  <div className="text-center py-8 bg-neutral-950 border border-zinc-800 rounded-2xl">
-                    <p className="text-xs text-zinc-500 font-semibold">You haven't submitted any job applications yet.</p>
+                  <div className="text-center py-8 text-zinc-500 text-xs">
+                    No active applications found. Choose a job to submit.
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    {applications.map(app => (
-                      <div 
-                        key={app.id} 
-                        onClick={() => setActiveApplication(activeApplication?.id === app.id ? null : app)}
-                        className="bg-neutral-950 border border-zinc-800 p-4 rounded-2xl space-y-3 hover:border-amber-500/25 transition-colors cursor-pointer"
-                      >
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <span className="text-[9.5px] font-mono font-black text-amber-500 uppercase tracking-widest">Tracking Ref: {app.id}</span>
-                            <h5 className="text-xs font-black text-white mt-1">{app.jobTitle}</h5>
-                            <p className="text-[10px] text-zinc-400 mt-0.5">{app.agencyName}</p>
-                          </div>
-                          <span className={`text-[9.5px] font-bold px-2 py-0.5 rounded-md ${getStageColor(app.stage)}`}>
-                            {app.stage}
-                          </span>
-                        </div>
+                  <div className="space-y-6">
+                    {applications.map(app => {
+                      // tracking stage lists
+                      const stagesList: ApplicationStage[] = [
+                        "Applied", "Documents Verified", "Under Review", "Interview Scheduled", 
+                        "Accepted", "Visa Processing", "Travel Ready", "Completed"
+                      ];
+                      
+                      const currentIdx = stagesList.indexOf(app.stage);
 
-                        {/* STEPPED TRACKER VISUALIZATIONS */}
-                        <div className="grid grid-cols-4 gap-1.5 pt-1 text-center text-[8.5px] text-zinc-500 font-mono">
-                          <div className={`p-1 rounded-sm border ${app.stage === "Applied" ? "border-amber-500 text-amber-400 bg-amber-500/5 font-black" : "border-zinc-800"}`}>
-                            1. Applied
+                      return (
+                        <div key={app.id} className="bg-zinc-900/40 border border-zinc-850 p-4 rounded-2xl space-y-4">
+                          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 border-b border-zinc-900 pb-2.5">
+                            <div>
+                              <span className="text-[9.5px] font-mono font-black text-[#C5A059] uppercase tracking-widest">Courier Tracking Ref: {app.id}</span>
+                              <h5 className="text-xs font-black text-white mt-0.5">{app.jobTitle}</h5>
+                              <p className="text-[10px] text-zinc-400 mt-0.5">{app.agencyName}</p>
+                            </div>
+                            <span className={`text-[9.5px] font-extrabold px-2 py-0.5 rounded-lg shrink-0 ${getStageColor(app.stage)}`}>
+                              {app.stage}
+                            </span>
                           </div>
-                          <div className={`p-1 rounded-sm border ${app.stage === "Documents Verified" ? "border-amber-500 text-amber-400 bg-amber-500/5 font-black" : "border-zinc-800"}`}>
-                            2. Verified
-                          </div>
-                          <div className={`p-1 rounded-sm border ${app.stage === "Interview Scheduled" ? "border-amber-500 text-amber-400 bg-amber-500/5 font-black" : "border-zinc-800"}`}>
-                            3. Interview
-                          </div>
-                          <div className={`p-1 rounded-sm border ${app.stage === "Visa Processing" || app.stage === "Travel Ready" || app.stage === "Completed" ? "border-amber-500 text-amber-400 bg-amber-500/5 font-black" : "border-zinc-800"}`}>
-                            4. Travel Ready
-                          </div>
-                        </div>
 
-                        {/* ACCORDION DETAILS */}
-                        {activeApplication?.id === app.id && (
-                          <motion.div 
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: "auto" }}
-                            className="pt-3 border-t border-zinc-900 space-y-3 text-[11px] text-zinc-300"
-                          >
-                            <div className="bg-neutral-900 p-3 rounded-xl space-y-2">
-                              <span className="text-[10px] text-zinc-500 block uppercase font-bold tracking-wider">Submitted Document Pack</span>
-                              <div className="grid grid-cols-2 gap-2 text-[10px] text-zinc-400">
-                                <div className="flex items-center gap-1.5">
-                                  <FileText size={12} className="text-emerald-500" />
-                                  <span>Passport: <strong>{app.documents.passport}</strong></span>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                  <FileText size={12} className="text-emerald-500" />
-                                  <span>CV/Resume: <strong>{app.documents.cv}</strong></span>
-                                </div>
-                                {app.documents.nationalId && (
-                                  <div className="flex items-center gap-1.5">
-                                    <FileText size={12} className="text-emerald-500" />
-                                    <span>National ID: <strong>Verified (Fayda)</strong></span>
+                          {/* COURIER FLOW STEPPER */}
+                          <div className="relative pt-2">
+                            {/* Horizontal progress bar background */}
+                            <div className="absolute top-3.5 left-2 right-2 h-1 bg-zinc-800 rounded-full z-0 hidden md:block"></div>
+                            {/* Active progress bar fill */}
+                            <div 
+                              className="absolute top-3.5 left-2 h-1 bg-amber-500 rounded-full z-0 hidden md:block transition-all duration-500"
+                              style={{ width: `${(currentIdx / (stagesList.length - 1)) * 100}%` }}
+                            ></div>
+
+                            <div className="grid grid-cols-2 md:grid-cols-8 gap-3 relative z-10 text-center">
+                              {stagesList.map((stg, sIdx) => {
+                                const isPassed = sIdx <= currentIdx;
+                                const isCurrent = sIdx === currentIdx;
+                                return (
+                                  <div key={stg} className="flex md:flex-col items-center gap-2 md:gap-1">
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border-2 transition-all ${
+                                      isCurrent 
+                                        ? "bg-amber-500 text-zinc-950 border-amber-500 scale-110 shadow-lg ring-4 ring-amber-500/25" 
+                                        : isPassed 
+                                          ? "bg-zinc-900 text-emerald-400 border-emerald-500" 
+                                          : "bg-zinc-950 text-zinc-600 border-zinc-800"
+                                    }`}>
+                                      {isPassed ? <Check size={12} strokeWidth={3} /> : <span className="text-[9px] font-mono font-bold">{sIdx + 1}</span>}
+                                    </div>
+                                    <span className={`text-[8.5px] font-mono font-black block tracking-tight text-left md:text-center ${isCurrent ? "text-amber-400 font-extrabold" : isPassed ? "text-zinc-300" : "text-zinc-600"}`}>
+                                      {stg}
+                                    </span>
                                   </div>
-                                )}
-                              </div>
+                                );
+                              })}
                             </div>
+                          </div>
 
-                            {/* CHAT WITH AGENCY */}
-                            <div className="flex gap-2">
-                              <a 
-                                href={`mailto:placement@gigiagency.com?subject=Inquiry on Application ${app.id}`}
-                                className="flex-1 bg-neutral-900 hover:bg-zinc-850 text-white border border-zinc-800 text-center py-2 rounded-lg font-bold text-[10px] uppercase transition-colors"
-                              >
-                                💬 Live Chat Agency
-                              </a>
-                              <button 
-                                onClick={() => {
-                                  setScamAgencyId(app.agencyId);
-                                  setSelectedJob(jobs.find(j => j.id === app.jobId) || null);
-                                  showSuccess("Scroll down to report fraud form configured below.");
-                                }}
-                                className="bg-rose-950/20 hover:bg-rose-950 border border-rose-500/40 text-rose-300 px-3 py-2 rounded-lg font-bold text-[10px] uppercase"
-                              >
-                                🚨 Report Fraud
-                              </button>
-                            </div>
-                          </motion.div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* INTERVIEW MANAGER */}
-              <div className="bg-neutral-950 border border-zinc-800 p-4 rounded-2xl space-y-3">
-                <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1.5">
-                  <Calendar size={13} className="text-purple-400" />
-                  Scheduled Interviews ({interviews.length})
-                </h4>
-
-                {interviews.length === 0 ? (
-                  <p className="text-[11px] text-zinc-500">No interviews currently scheduled.</p>
-                ) : (
-                  <div className="space-y-2.5">
-                    {interviews.map(i => (
-                      <div key={i.id} className="bg-neutral-900 p-3 rounded-xl border border-zinc-800 flex justify-between items-center gap-2">
-                        <div className="text-[11px] space-y-1">
-                          <span className="text-[9px] font-bold text-purple-400 uppercase font-mono bg-purple-950/40 px-1.5 py-0.5 rounded border border-purple-500/10">Ref: {i.applicationId}</span>
-                          <h5 className="font-bold text-white mt-1">Virtual Video Screening Panel</h5>
-                          <p className="text-[10px] text-zinc-400">Time: {new Date(i.scheduledAt).toLocaleString()}</p>
+                          {/* NOTES */}
+                          <div className="bg-zinc-950 p-3 rounded-xl border border-zinc-850 text-[10.5px] text-zinc-400">
+                            <strong>Audit Action Status:</strong> Gigi Agency verified Fayda digital records. Visa clearance queue established at National Bureau of Overseas Labor.
+                          </div>
                         </div>
-                        <a 
-                          href={i.meetingLink} 
-                          target="_blank" 
-                          referrerPolicy="no-referrer"
-                          className="bg-purple-600 hover:bg-purple-700 text-white text-[10px] font-black px-3 py-1.5 rounded-lg shrink-0 transition-all uppercase"
-                        >
-                          Launch Meet
-                        </a>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
 
-              {/* REAL-TIME NOTIFICATIONS BOX */}
-              <div className="bg-neutral-950 border border-zinc-800 p-4 rounded-2xl space-y-3">
+              {/* INTERVIEWS & SAVED JOBS DUAL COHORTS */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* INTERVIEW INVITATION BOX */}
+                <div className="bg-zinc-950 border border-zinc-800/80 p-4 rounded-3xl shadow-xl space-y-3">
+                  <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1.5 border-b border-zinc-900 pb-2">
+                    <Calendar size={13} className="text-purple-400" />
+                    {lang === 'en' ? "Interview Invitations" : "የቃለ-መጠይቅ ቀጠሮዎች"}
+                  </h4>
+
+                  {interviews.length === 0 ? (
+                    <p className="text-[11px] text-zinc-500">No upcoming interviews scheduled yet.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {interviews.map(i => (
+                        <div key={i.id} className="bg-zinc-900/60 p-3 rounded-2xl border border-zinc-850 flex justify-between items-center gap-3">
+                          <div className="text-[10.5px] space-y-1">
+                            <span className="text-[8px] font-bold text-purple-400 uppercase font-mono bg-purple-950/40 px-1.5 py-0.5 rounded border border-purple-500/10">Ref: {i.applicationId}</span>
+                            <h5 className="font-bold text-white text-xs">Video Placements Assessment</h5>
+                            <p className="text-zinc-400">Time: {new Date(i.scheduledAt).toLocaleString()}</p>
+                          </div>
+                          <a 
+                            href={i.meetingLink} 
+                            target="_blank" 
+                            referrerPolicy="no-referrer"
+                            className="bg-purple-600 hover:bg-purple-700 text-white text-[9.5px] font-black px-3 py-2 rounded-xl shrink-0 transition-all uppercase tracking-wider"
+                          >
+                            Launch Meet
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* SAVED JOBS BOOKMARKS LIST */}
+                <div className="bg-zinc-950 border border-zinc-800/80 p-4 rounded-3xl shadow-xl space-y-3">
+                  <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1.5 border-b border-zinc-900 pb-2">
+                    <Heart size={13} className="text-rose-500" />
+                    {lang === 'en' ? `Saved Jobs (${savedJobs.length})` : `የተቀመጡ ስራዎች (${savedJobs.length})`}
+                  </h4>
+
+                  {savedJobs.length === 0 ? (
+                    <p className="text-[11px] text-zinc-500">You haven't bookmarked any listings yet.</p>
+                  ) : (
+                    <div className="space-y-2 max-h-52 overflow-y-auto">
+                      {savedJobs.map(jobId => {
+                        const savedJobObj = jobs.find(j => j.id === jobId);
+                        if (!savedJobObj) return null;
+                        return (
+                          <div 
+                            key={jobId} 
+                            onClick={() => setSelectedJob(savedJobObj)}
+                            className="bg-zinc-900/50 hover:bg-zinc-900 p-2.5 rounded-2xl border border-zinc-850 flex justify-between items-center cursor-pointer transition-all"
+                          >
+                            <div className="text-[10.5px]">
+                              <strong className="text-white text-xs block">{savedJobObj.title}</strong>
+                              <span className="text-zinc-400 block mt-0.5">{savedJobObj.countryFlag} {savedJobObj.country} • {savedJobObj.salary}</span>
+                            </div>
+                            <button 
+                              onClick={(e) => toggleSaveJob(jobId, e)}
+                              className="text-rose-500 hover:text-zinc-400 p-1 rounded-lg"
+                            >
+                              <Heart size={12} fill="currentColor" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* NOTIFICATION FEED */}
+              <div className="bg-zinc-950 border border-zinc-800/80 p-4 rounded-3xl shadow-xl space-y-3">
                 <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1.5">
                   <Bell size={13} className="text-amber-500 animate-swing" />
-                  Notification Center
+                  {lang === 'en' ? "Compliance Regulatory Inbox" : "የክብር የቁጥጥር መልዕክቶች"}
                 </h4>
 
                 {notifications.length === 0 ? (
-                  <p className="text-[11px] text-zinc-500">Your regulatory inbox is clean.</p>
+                  <p className="text-[11px] text-zinc-500">Your notification center is clean.</p>
                 ) : (
-                  <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                  <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
                     {notifications.map(n => (
-                      <div key={n.id} className="bg-neutral-900 p-2.5 rounded-lg border border-zinc-900 text-[11px] space-y-1">
+                      <div key={n.id} className="bg-zinc-900/60 p-2.5 rounded-2xl border border-zinc-850 text-[11px] space-y-1">
                         <div className="flex justify-between items-center">
                           <strong className="text-amber-400 font-bold">{n.title}</strong>
                           <span className="text-[9px] text-zinc-500 font-mono">Just Now</span>
@@ -779,45 +1139,609 @@ export default function OverseasEmploymentModule({ isDarkMode, lang }: OverseasE
                   </div>
                 )}
               </div>
+            </div>
+          )}
 
-              {/* FRAUD & SCAM REPORTING FORM (Anti-Fraud protection) */}
-              <div className="bg-rose-950/10 border border-rose-500/20 p-4 rounded-2xl space-y-3">
-                <h4 className="text-xs font-black text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <AlertTriangle size={14} className="text-rose-400" />
-                  Every-zone Anti-Fraud Enforcement
+          {/* SUB-TAB 3: SMART CV BUILDER */}
+          {applicantTab === "smart_cv" && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* EDITABLE FORM */}
+              <div className="bg-zinc-950 border border-zinc-800/80 p-5 rounded-3xl shadow-xl space-y-4">
+                <div className="border-b border-zinc-900 pb-3">
+                  <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1.5">
+                    <Sparkles size={14} className="text-amber-500" />
+                    {lang === 'en' ? "Smart CV Builder & Analyzer" : "ዘመናዊ ሲቪ ማጠናቀቂያ"}
+                  </h4>
+                  <p className="text-[10px] text-zinc-400 mt-1">
+                    Every-zone auto-translates your experience to match Middle East and European visa parameters.
+                  </p>
+                </div>
+
+                <div className="space-y-3 text-xs">
+                  <div>
+                    <label className="text-[10px] text-zinc-500 block mb-1 font-extrabold uppercase">Full Name</label>
+                    <input 
+                      type="text" 
+                      value={cvData.fullName}
+                      onChange={(e) => setCvData(prev => ({ ...prev, fullName: e.target.value }))}
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-2.5 text-white font-sans"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] text-zinc-500 block mb-1 font-extrabold uppercase">Email</label>
+                      <input 
+                        type="text" 
+                        value={cvData.email}
+                        onChange={(e) => setCvData(prev => ({ ...prev, email: e.target.value }))}
+                        className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-2.5 text-white font-sans"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-zinc-500 block mb-1 font-extrabold uppercase">Phone</label>
+                      <input 
+                        type="text" 
+                        value={cvData.phone}
+                        onChange={(e) => setCvData(prev => ({ ...prev, phone: e.target.value }))}
+                        className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-2.5 text-white font-sans"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] text-zinc-500 block mb-1 font-extrabold uppercase">Education History</label>
+                    <textarea 
+                      rows={2}
+                      value={cvData.education}
+                      onChange={(e) => setCvData(prev => ({ ...prev, education: e.target.value }))}
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-2.5 text-white font-sans"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] text-zinc-500 block mb-1 font-extrabold uppercase">Experience & Placements</label>
+                    <textarea 
+                      rows={2}
+                      value={cvData.experience}
+                      onChange={(e) => setCvData(prev => ({ ...prev, experience: e.target.value }))}
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-2.5 text-white font-sans"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] text-zinc-500 block mb-1 font-extrabold uppercase">Skills (Comma separated)</label>
+                      <input 
+                        type="text" 
+                        value={cvData.skills}
+                        onChange={(e) => setCvData(prev => ({ ...prev, skills: e.target.value }))}
+                        className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-2.5 text-white font-sans"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-zinc-500 block mb-1 font-extrabold uppercase">Languages Known</label>
+                      <input 
+                        type="text" 
+                        value={cvData.languages}
+                        onChange={(e) => setCvData(prev => ({ ...prev, languages: e.target.value }))}
+                        className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-2.5 text-white font-sans"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] text-zinc-500 block mb-1 font-extrabold uppercase">Certificates & Clearance Status</label>
+                    <input 
+                      type="text" 
+                      value={cvData.certificates}
+                      onChange={(e) => setCvData(prev => ({ ...prev, certificates: e.target.value }))}
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-2.5 text-white font-sans"
+                    />
+                  </div>
+
+                  <div className="flex gap-2.5 pt-2">
+                    <button 
+                      onClick={() => {
+                        setIsSavingCV(true);
+                        setTimeout(() => {
+                          setIsSavingCV(false);
+                          showSuccess(lang === 'en' ? "Smart CV synchronized & database updated!" : "ዘመናዊ ሲቪ ተቀምጧል! ዝግጁ ነዎት።");
+                        }, 1000);
+                      }}
+                      className="flex-1 bg-[#C5A059] text-stone-950 font-black py-2.5 rounded-2xl uppercase text-[10px] tracking-wider hover:opacity-90 transition-all cursor-pointer"
+                    >
+                      {isSavingCV ? "Syncing..." : "Sync Smart CV Profile"}
+                    </button>
+                    <button 
+                      onClick={handleDownloadCV}
+                      className="bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 text-zinc-300 p-2.5 rounded-2xl flex items-center justify-center cursor-pointer"
+                      title="Download PDF Layout"
+                    >
+                      <Download size={16} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* REAL-TIME PREMIUM CV PREVIEW SHEET */}
+              <div className="bg-white text-stone-950 p-6 rounded-3xl shadow-2xl relative border-2 border-stone-100 flex flex-col justify-between">
+                <div className="absolute top-4 right-4 bg-amber-500/10 border border-amber-500/30 text-amber-600 text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full">
+                  Verified EveryZone Template
+                </div>
+
+                <div className="space-y-4">
+                  {/* CV Header */}
+                  <div className="border-b-2 border-stone-900 pb-3">
+                    <h2 className="text-lg font-black text-stone-900 uppercase tracking-tight">{cvData.fullName || "Selamawit Tekle"}</h2>
+                    <div className="grid grid-cols-2 gap-1 text-[10px] text-stone-600 font-mono mt-1">
+                      <div>📧 {cvData.email}</div>
+                      <div>📞 {cvData.phone}</div>
+                      <div>📍 {cvData.city}</div>
+                      <div>🌍 Fayda Digital ID Verified ✅</div>
+                    </div>
+                  </div>
+
+                  {/* Experience */}
+                  <div className="space-y-1">
+                    <h3 className="text-xs font-black text-stone-900 uppercase tracking-widest border-b border-stone-200 pb-0.5">Professional Experience</h3>
+                    <p className="text-[11px] text-stone-700 leading-relaxed font-sans">{cvData.experience || "Not defined yet."}</p>
+                  </div>
+
+                  {/* Education */}
+                  <div className="space-y-1">
+                    <h3 className="text-xs font-black text-stone-900 uppercase tracking-widest border-b border-stone-200 pb-0.5">Education & Vocational</h3>
+                    <p className="text-[11px] text-stone-700 leading-relaxed font-sans">{cvData.education || "Not defined yet."}</p>
+                  </div>
+
+                  {/* Skills & languages */}
+                  <div className="grid grid-cols-2 gap-4 pt-1">
+                    <div className="space-y-1">
+                      <h4 className="text-[10px] font-black text-stone-900 uppercase tracking-widest border-b border-stone-200 pb-0.5">Core Strengths</h4>
+                      <div className="flex flex-wrap gap-1 pt-1">
+                        {cvData.skills.split(",").map(sk => (
+                          <span key={sk} className="bg-stone-100 px-2 py-0.5 rounded text-[9px] text-stone-700 font-mono">{sk.trim()}</span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="text-[10px] font-black text-stone-900 uppercase tracking-widest border-b border-stone-200 pb-0.5">Languages</h4>
+                      <p className="text-[10.5px] text-stone-700 font-sans mt-1">{cvData.languages}</p>
+                    </div>
+                  </div>
+
+                  {/* Certification */}
+                  <div className="space-y-1">
+                    <h3 className="text-xs font-black text-stone-900 uppercase tracking-widest border-b border-stone-200 pb-0.5">Certificates & Licenses</h3>
+                    <p className="text-[10.5px] text-stone-700 font-mono leading-relaxed">{cvData.certificates}</p>
+                  </div>
+                </div>
+
+                <div className="border-t border-stone-100 pt-3 flex justify-between items-center text-[9px] text-stone-400 font-mono">
+                  <span>Export Ref: EZ-CV-95420</span>
+                  <span>Ministry of Labor Compliant</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* SUB-TAB 4: COUNTRIES REQUIREMENTS DIRECTORY */}
+          {applicantTab === "countries" && (
+            <div className="space-y-4">
+              <div className="bg-zinc-950 border border-zinc-800/80 p-4 rounded-3xl">
+                <h4 className="text-xs font-black text-white uppercase tracking-wider">
+                  {lang === 'en' ? "Global Placement Requirements & Salary Ranges" : "የውጭ ሀገራት የስራ ዝግጅት፣ ደመወዝ እና መስፈርቶች"}
                 </h4>
-                <p className="text-[10px] text-rose-300 leading-normal font-sans">
-                  Suspicious agency charging illegal upfront fees? Report immediately. Every-zone guarantees automated suspension of fake entities and forwards coordinates to state investigation officers.
+                <p className="text-[10.5px] text-zinc-400 mt-1">
+                  Choose a target country directly below to examine working conditions, legal limitations, and compliance guidelines verified by government audits.
+                </p>
+              </div>
+
+              {/* COUNTRY SELECTOR CARD GRID */}
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                {destinationCountriesData.map(c => (
+                  <div
+                    key={c.id}
+                    onClick={() => setSelectedCountryObj(c)}
+                    className={`p-4 rounded-3xl border text-center cursor-pointer transition-all ${
+                      selectedCountryObj?.id === c.id 
+                        ? "bg-amber-500/10 border-amber-500 text-amber-400 scale-[1.02]" 
+                        : "bg-zinc-950 border-zinc-850 hover:bg-zinc-900 text-zinc-300"
+                    }`}
+                  >
+                    <span className="text-4xl block mb-2 leading-none">{c.flag}</span>
+                    <strong className="text-xs text-white block truncate">{lang === 'en' ? c.name : c.nameAm}</strong>
+                    <span className="text-[10px] text-zinc-400 block mt-1 font-mono">{c.salary}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* DYNAMIC REQUIREMENTS INFO-BOARD */}
+              {selectedCountryObj && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-zinc-950 border-2 border-amber-500/40 p-5 rounded-3xl shadow-2xl space-y-4"
+                >
+                  <div className="flex items-center gap-2 border-b border-zinc-900 pb-3">
+                    <span className="text-3xl">{selectedCountryObj.flag}</span>
+                    <div>
+                      <h3 className="text-sm font-black text-white uppercase">{lang === 'en' ? selectedCountryObj.name : selectedCountryObj.nameAm}</h3>
+                      <p className="text-[10px] text-zinc-400 uppercase font-mono tracking-wider">Official Labor Framework</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-zinc-300">
+                    <div className="bg-zinc-900/60 p-3 rounded-2xl border border-zinc-850">
+                      <span className="text-zinc-500 uppercase tracking-wider text-[9px] block font-extrabold mb-1">💼 Employment Specs</span>
+                      <div className="space-y-1 font-sans">
+                        <div>• Salary range: <strong>{selectedCountryObj.salary}</strong></div>
+                        <div>• Working hours: <strong>{selectedCountryObj.hours}</strong></div>
+                        <div>• Contract length: <strong>{selectedCountryObj.contract}</strong></div>
+                      </div>
+                    </div>
+
+                    <div className="bg-zinc-900/60 p-3 rounded-2xl border border-zinc-850">
+                      <span className="text-zinc-500 uppercase tracking-wider text-[9px] block font-extrabold mb-1">🏠 Logistics & Welfare</span>
+                      <div className="space-y-1 font-sans">
+                        <div>• Housing accommodation: <strong>{selectedCountryObj.accommodation}</strong></div>
+                        <div>• Food & meals: <strong>{selectedCountryObj.food}</strong></div>
+                        <div>• Travel transport: <strong>{selectedCountryObj.transport}</strong></div>
+                      </div>
+                    </div>
+
+                    <div className="bg-zinc-900/60 p-3 rounded-2xl border border-zinc-850">
+                      <span className="text-zinc-500 uppercase tracking-wider text-[9px] block font-extrabold mb-1">📜 Visa Audit Checklist</span>
+                      <p className="text-[10.5px] leading-relaxed text-zinc-400 font-sans">{selectedCountryObj.visaRequirements}</p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </div>
+          )}
+
+          {/* SUB-TAB 5: AGENCIES DIRECTORY (SCAM AUDITING & RATINGS) */}
+          {applicantTab === "agencies" && (
+            <div className="space-y-4">
+              <div className="bg-zinc-950 border border-zinc-800/80 p-4 rounded-3xl flex items-start gap-3">
+                <ShieldAlert size={20} className="text-amber-500 shrink-0 mt-0.5" />
+                <div className="text-[11px] text-zinc-300 leading-relaxed">
+                  <strong>Strict Ministry of Labor Integration:</strong> All registered agencies are subject to periodic performance audits. Placing illegal upfront fee charges results in instant suspension.
+                </div>
+              </div>
+
+              {/* AGENCY PROFILES LIST */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {registeredAgencies.map(ag => (
+                  <div key={ag.id} className="bg-zinc-950 border border-zinc-850 p-4 rounded-3xl space-y-4 shadow-xl relative overflow-hidden flex flex-col justify-between">
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-start">
+                        <div className="w-9 h-9 rounded-full bg-amber-500/10 flex items-center justify-center text-lg">🏢</div>
+                        {ag.verified ? (
+                          <span className="bg-emerald-950 text-emerald-400 text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border border-emerald-500/20 flex items-center gap-0.5">
+                            <Check size={9} /> Verified
+                          </span>
+                        ) : (
+                          <span className="bg-amber-950 text-amber-400 text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border border-amber-500/20">
+                            Awaiting Audit
+                          </span>
+                        )}
+                      </div>
+
+                      <div>
+                        <h4 className="text-xs font-black text-white">{ag.name}</h4>
+                        <span className="text-[9px] text-zinc-500 block font-mono">License: {ag.license}</span>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-1 text-center text-[10px] text-zinc-400 border-t border-zinc-900 pt-2.5">
+                        <div>
+                          <strong className="text-white block text-[11px]">★ {ag.rating}</strong>
+                          Rating
+                        </div>
+                        <div>
+                          <strong className="text-white block text-[11px]">{ag.response}</strong>
+                          Response
+                        </div>
+                        <div>
+                          <strong className="text-white block text-[11px]">{ag.placements}</strong>
+                          Placed
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-1.5 pt-3 border-t border-zinc-900 mt-2">
+                      <button
+                        onClick={() => {
+                          setChatAgencyId(ag.id);
+                          setApplicantTab("chat");
+                        }}
+                        className="flex-1 bg-zinc-900 hover:bg-zinc-850 text-white border border-zinc-800 text-center py-2 rounded-xl text-[9.5px] font-black uppercase transition-all cursor-pointer"
+                      >
+                        💬 Chat Agency
+                      </button>
+                      <button
+                        onClick={() => {
+                          setScamAgencyId(ag.id);
+                          showSuccess("Anti-Scam reporting form launched below.");
+                        }}
+                        className="bg-rose-950/20 hover:bg-rose-950 border border-rose-500/30 text-rose-300 px-3 py-2 rounded-xl text-[9.5px] font-bold uppercase transition-all"
+                      >
+                        🚨 Report
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* PLACED WORKER REVIEWS CAROUSEL */}
+              <div className="bg-zinc-950 border border-zinc-800/80 p-5 rounded-3xl space-y-3">
+                <h4 className="text-xs font-black text-white uppercase tracking-wider">
+                  Placed Workers' Verified Reviews (ማጭበርበርን ለመቀነስ)
+                </h4>
+                <p className="text-[10px] text-zinc-400 leading-normal">
+                  Every feedback entry below is verified through physical border exit logs to guarantee actual deployment feedback.
                 </p>
 
-                <form onSubmit={handleReportScam} className="space-y-2 text-xs">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-52 overflow-y-auto pt-1">
+                  {reviews.map(rev => (
+                    <div key={rev.id} className="bg-zinc-900/40 p-3 rounded-2xl text-[11px] border border-zinc-850 space-y-1.5">
+                      <div className="flex justify-between items-center text-[10px]">
+                        <strong className="text-white">{rev.userName}</strong>
+                        <span className="text-amber-500 font-extrabold">{"★".repeat(rev.rating)}</span>
+                      </div>
+                      <p className="text-zinc-400 font-sans leading-relaxed">{rev.comment}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* WRITE PLACEMENT REVIEW FORM */}
+                <form onSubmit={handlePostReview} className="space-y-2 border-t border-zinc-900 pt-3">
+                  <span className="text-[10px] text-zinc-500 uppercase tracking-widest block font-extrabold">Have you travelled with an agency? Share your experience</span>
+                  <div className="flex gap-3 text-xs items-center">
+                    <span className="text-zinc-400">Score Rating:</span>
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4, 5].map(star => (
+                        <button 
+                          key={star} 
+                          type="button" 
+                          onClick={() => setUserReviewRating(star)}
+                          className={`text-sm ${star <= userReviewRating ? "text-amber-400" : "text-zinc-700"}`}
+                        >
+                          ★
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={userReviewComment}
+                      onChange={(e) => setUserReviewComment(e.target.value)}
+                      placeholder="Write deployment feedback, accommodation notes, salary accuracy..."
+                      className="flex-1 bg-zinc-900 border border-zinc-800 rounded-xl p-2.5 text-xs text-white focus:outline-none"
+                    />
+                    <button 
+                      type="submit"
+                      className="bg-amber-500 text-zinc-950 font-black px-4 py-2.5 rounded-xl text-[10px] uppercase tracking-wider"
+                    >
+                      Post Audit review
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              {/* ANTI-FRAUD REGULATORY REPORT FORM */}
+              <div className="bg-rose-950/10 border border-rose-500/20 p-5 rounded-3xl space-y-3">
+                <h4 className="text-xs font-black text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <AlertTriangle size={14} className="text-rose-400" />
+                  Every-zone Anti-Fraud Enforcement Audit
+                </h4>
+                <p className="text-[10.5px] text-rose-300 leading-normal">
+                  Everyzone maintains zero-tolerance for placement fraud. If any agency asks for illegal upfront payments or processes unapproved visas, file a complaint immediately. Suspected entities are restricted.
+                </p>
+
+                <form onSubmit={handleReportScam} className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end text-xs">
                   <div>
-                    <label className="text-[10px] text-zinc-400 block mb-1">Target Agency Reference</label>
+                    <label className="text-[10px] text-zinc-400 block mb-1 font-bold">Target Agency</label>
                     <input
                       type="text"
                       value={scamAgencyId}
                       onChange={(e) => setScamAgencyId(e.target.value)}
-                      placeholder="e.g. v7 (Gigi), v8 (Horn-of-Africa)"
-                      className="w-full bg-neutral-900 border border-zinc-800 rounded-lg p-2 text-white focus:outline-none"
+                      placeholder="e.g., Gigi Placements, Horn-of-Africa"
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-2.5 text-white"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] text-zinc-400 block mb-1">Scam description & illegal requests detail</label>
-                    <textarea
-                      rows={2}
+                    <label className="text-[10px] text-zinc-400 block mb-1 font-bold">Scam Detail Description</label>
+                    <input
+                      type="text"
                       value={scamDescription}
                       onChange={(e) => setScamDescription(e.target.value)}
-                      placeholder="State what went wrong (charging placement fees, fake documents request, etc)..."
-                      className="w-full bg-neutral-900 border border-zinc-800 rounded-lg p-2 text-white focus:outline-none"
+                      placeholder="Describe what occurred (upfront payments, visa delay)..."
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-2.5 text-white"
                     />
                   </div>
                   <button
                     type="submit"
-                    className="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 rounded-lg text-[10px] uppercase tracking-wider transition-colors"
+                    className="w-full bg-rose-600 hover:bg-rose-700 text-white font-black py-2.5 rounded-xl text-[10px] uppercase tracking-wider transition-colors cursor-pointer"
                   >
-                    File Regulatory Report
+                    File Complaint
                   </button>
                 </form>
+              </div>
+            </div>
+          )}
+
+          {/* SUB-TAB 6: DIRECT INTERACTIVE CHAT ROOM */}
+          {applicantTab === "chat" && (
+            <div className="bg-zinc-950 border border-zinc-800 p-1 rounded-3xl shadow-2xl flex flex-col md:flex-row h-[550px] overflow-hidden">
+              {/* CHAT LEFT SIDEBAR (AGENCY SWITCHER) */}
+              <div className="w-full md:w-64 bg-zinc-900/40 border-r border-zinc-900 p-3 flex flex-col gap-2 shrink-0">
+                <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-extrabold block px-1">Registered Agencies</span>
+                {registeredAgencies.map(ag => (
+                  <div
+                    key={ag.id}
+                    onClick={() => setChatAgencyId(ag.id)}
+                    className={`p-3 rounded-2xl cursor-pointer transition-all border flex items-center justify-between ${
+                      chatAgencyId === ag.id 
+                        ? "bg-amber-500/10 border-amber-500/30 text-amber-400" 
+                        : "bg-zinc-950/40 border-transparent hover:bg-zinc-900 text-zinc-400"
+                    }`}
+                  >
+                    <div>
+                      <strong className="text-xs text-white block truncate">{ag.name.split(" ")[0]} Placements</strong>
+                      <span className="text-[9px] text-zinc-500 block font-mono">Response: {ag.response}</span>
+                    </div>
+                    {chatAgencyId === ag.id && <div className="w-1.5 h-1.5 bg-amber-500 rounded-full"></div>}
+                  </div>
+                ))}
+              </div>
+
+              {/* CHAT MAIN MESSAGE BOX */}
+              <div className="flex-1 flex flex-col h-full bg-zinc-950 justify-between">
+                {/* CHAT HEADER */}
+                <div className="p-4 border-b border-zinc-900 flex justify-between items-center bg-zinc-900/10">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center font-bold text-amber-500 border border-amber-500/20">🏢</div>
+                    <div>
+                      <h4 className="text-xs font-black text-white">{registeredAgencies.find(a => a.id === chatAgencyId)?.name}</h4>
+                      <span className="text-[9px] text-zinc-400 font-mono">License Verified: {registeredAgencies.find(a => a.id === chatAgencyId)?.license}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></span>
+                    <span className="text-[9px] text-zinc-500 uppercase font-mono">Live Session</span>
+                  </div>
+                </div>
+
+                {/* MESSAGES VIEW CONTAINER */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                  {chatMessages.map((msg, idx) => {
+                    const isApplicant = msg.sender === "applicant";
+                    return (
+                      <div key={msg.id || idx} className={`flex ${isApplicant ? "justify-end" : "justify-start"}`}>
+                        <div className={`max-w-xs p-3 rounded-2xl text-xs space-y-1 shadow-md ${
+                          isApplicant 
+                            ? "bg-[#C5A059] text-stone-950 font-medium rounded-tr-none" 
+                            : "bg-zinc-900 text-zinc-100 rounded-tl-none border border-zinc-850"
+                        }`}>
+                          {msg.text && <p className="font-sans leading-relaxed">{msg.text}</p>}
+                          {msg.image && (
+                            <img src={msg.image} alt="Attachment" className="rounded-lg max-w-full h-32 object-cover border border-zinc-700" />
+                          )}
+                          {msg.docName && (
+                            <div className="flex items-center gap-2 bg-zinc-950/30 p-2 rounded-xl text-[10px]">
+                              <FileText size={14} className="text-red-400" />
+                              <span>{msg.docName}</span>
+                            </div>
+                          )}
+                          {msg.voiceDuration && (
+                            <div className="flex items-center gap-2 text-[11px]">
+                              <Mic size={14} className="animate-pulse" />
+                              <div className="flex gap-0.5 items-center">
+                                <span className="h-2 w-0.5 bg-current"></span>
+                                <span className="h-4 w-0.5 bg-current"></span>
+                                <span className="h-3 w-0.5 bg-current"></span>
+                                <span className="h-5 w-0.5 bg-current"></span>
+                                <span className="h-1 w-0.5 bg-current"></span>
+                              </div>
+                              <span className="font-mono text-[9px]">{msg.voiceDuration} Voice Note</span>
+                            </div>
+                          )}
+                          <span className={`text-[8px] block text-right font-mono ${isApplicant ? "text-stone-800" : "text-zinc-500"}`}>{msg.timestamp}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* AUDIO RECORDING BANNER */}
+                {isRecording && (
+                  <div className="bg-amber-500/10 border-t border-amber-500/30 p-2.5 flex justify-between items-center px-4">
+                    <div className="flex items-center gap-2 text-xs text-amber-400">
+                      <span className="w-2.5 h-2.5 bg-rose-500 rounded-full animate-ping"></span>
+                      <span>Recording Voice Memo (0:{(recordTime < 10 ? "0" : "") + recordTime})</span>
+                    </div>
+                    <button 
+                      onClick={() => setIsRecording(false)}
+                      className="text-[9px] text-zinc-400 uppercase font-bold"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+
+                {/* INPUT ZONE */}
+                <div className="p-3 border-t border-zinc-900 bg-zinc-900/20 flex items-center gap-2">
+                  <div className="flex gap-1">
+                    {/* Simulated document attach */}
+                    <button
+                      onClick={() => {
+                        const newMsg = {
+                          id: Date.now().toString(),
+                          sender: "applicant" as const,
+                          docName: "Smart_CV_Selamawit.pdf",
+                          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        };
+                        setChatMessages(prev => [...prev, newMsg]);
+                        showSuccess("Smart CV document shared.");
+                        simulateAgencyReply();
+                      }}
+                      className="p-2.5 bg-zinc-900 border border-zinc-800 rounded-xl text-zinc-400 hover:text-white transition-colors"
+                      title="Attach Smart CV PDF"
+                    >
+                      <FileText size={14} />
+                    </button>
+
+                    {/* Simulated Image attach */}
+                    <button
+                      onClick={() => {
+                        const newMsg = {
+                          id: Date.now().toString(),
+                          sender: "applicant" as const,
+                          image: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=200",
+                          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        };
+                        setChatMessages(prev => [...prev, newMsg]);
+                        showSuccess("Fayda ID Photo shared.");
+                        simulateAgencyReply();
+                      }}
+                      className="p-2.5 bg-zinc-900 border border-zinc-800 rounded-xl text-zinc-400 hover:text-white transition-colors"
+                      title="Attach Fayda ID Photo"
+                    >
+                      <Camera size={14} />
+                    </button>
+
+                    {/* Simulated Voice note */}
+                    <button
+                      onClick={toggleRecording}
+                      className={`p-2.5 border rounded-xl transition-all ${
+                        isRecording 
+                          ? "bg-rose-600 border-rose-500 text-white animate-pulse" 
+                          : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white"
+                      }`}
+                      title="Record Voice Message"
+                    >
+                      <Mic size={14} />
+                    </button>
+                  </div>
+
+                  <input
+                    type="text"
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleSendMessage(); }}
+                    placeholder="Type Amharic/English message to agency audit desk..."
+                    className="flex-1 bg-zinc-900 border border-zinc-800 rounded-2xl p-2.5 text-xs text-white focus:outline-none"
+                  />
+
+                  <button
+                    onClick={handleSendMessage}
+                    className="bg-[#C5A059] hover:opacity-90 text-stone-950 p-2.5 rounded-xl transition-all cursor-pointer"
+                  >
+                    <Send size={14} />
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -825,75 +1749,229 @@ export default function OverseasEmploymentModule({ isDarkMode, lang }: OverseasE
       )}
 
       {/* =========================================================================
-          AGENCY WORKSPACE (CONTROL CENTER)
+          AGENCY CONTROL SYSTEM (CRM WORKSPACE)
           ========================================================================= */}
       {activeRole === "agency" && (
         <div className="space-y-4">
-          {/* CHOOSE VENDOR PROFILE MOCK */}
-          <div className="bg-neutral-950 border border-zinc-800 p-3.5 rounded-2xl space-y-2">
-            <label className="text-[10px] text-zinc-400 uppercase tracking-wider font-extrabold block">Select Active Agency Session</label>
+          {/* SESSIONS PICKER */}
+          <div className="bg-zinc-950 border border-zinc-800/80 p-4 rounded-3xl space-y-2 shadow-xl">
+            <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-extrabold block">Authorized Agency Identity</span>
             <div className="flex gap-2">
               <button
                 onClick={() => setCurrentAgencyId("v7")}
-                className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold border transition-colors ${
+                className={`flex-1 py-2 text-xs font-black rounded-xl border transition-all ${
                   currentAgencyId === "v7"
                     ? "bg-amber-500/15 border-amber-500 text-amber-400 font-extrabold"
-                    : "bg-neutral-900 border-transparent text-zinc-400 hover:text-white"
+                    : "bg-zinc-900/60 border-transparent text-zinc-400 hover:text-white"
                 }`}
               >
-                Gigi Placements (ጂጂ ወኪል)
+                Gigi International Placements (ጂጂ ወኪል)
               </button>
               <button
                 onClick={() => setCurrentAgencyId("v8")}
-                className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold border transition-colors ${
+                className={`flex-1 py-2 text-xs font-black rounded-xl border transition-all ${
                   currentAgencyId === "v8"
                     ? "bg-amber-500/15 border-amber-500 text-amber-400 font-extrabold"
-                    : "bg-neutral-900 border-transparent text-zinc-400 hover:text-white"
+                    : "bg-zinc-900/60 border-transparent text-zinc-400 hover:text-white"
                 }`}
               >
-                Horn of Africa (ቀንድ ኤጀንሲ)
+                Horn-of-Africa Employment Co. (ቀንድ ኤጀንሲ)
               </button>
             </div>
           </div>
 
-          {/* PUBLISH NEW JOB FORM */}
-          <div className="bg-neutral-950 border border-zinc-800 p-4 rounded-2xl space-y-3">
+          {/* CRM NUMERICAL METRICS SUMMARY */}
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+            <div className="bg-zinc-950 border border-zinc-850 p-3.5 rounded-2xl">
+              <span className="text-[10px] text-zinc-500 block uppercase">Total Applicants</span>
+              <strong className="text-xl text-white font-mono block mt-1">48 Candidates</strong>
+              <span className="text-[9px] text-emerald-400 font-mono mt-1 block">▲ 14% this week</span>
+            </div>
+            <div className="bg-zinc-950 border border-zinc-850 p-3.5 rounded-2xl">
+              <span className="text-[10px] text-zinc-500 block uppercase">Active Jobs</span>
+              <strong className="text-xl text-white font-mono block mt-1">
+                {jobs.filter(j => j.agencyId === currentAgencyId).length} Vacancies
+              </strong>
+              <span className="text-[9px] text-zinc-500 font-mono mt-1 block">Ministry Certified</span>
+            </div>
+            <div className="bg-zinc-950 border border-zinc-850 p-3.5 rounded-2xl">
+              <span className="text-[10px] text-zinc-500 block uppercase">Pending Docs</span>
+              <strong className="text-xl text-white font-mono block mt-1">3 Audits</strong>
+              <span className="text-[9px] text-amber-400 font-mono mt-1 block">Fayda review queue</span>
+            </div>
+            <div className="bg-zinc-950 border border-zinc-850 p-3.5 rounded-2xl">
+              <span className="text-[10px] text-zinc-500 block uppercase">Interviews</span>
+              <strong className="text-xl text-white font-mono block mt-1">5 Video Meets</strong>
+              <span className="text-[9px] text-purple-400 font-mono mt-1 block">Scheduled on Google Meet</span>
+            </div>
+            <div className="bg-zinc-950 border border-zinc-850 p-3.5 rounded-2xl">
+              <span className="text-[10px] text-zinc-500 block uppercase">Response Rate</span>
+              <strong className="text-xl text-white font-mono block mt-1">98.4%</strong>
+              <span className="text-[9px] text-emerald-400 font-mono mt-1 block">Outstanding rating</span>
+            </div>
+            <div className="bg-zinc-950 border border-zinc-850 p-3.5 rounded-2xl">
+              <span className="text-[10px] text-zinc-500 block uppercase">Estimated Revenue</span>
+              <strong className="text-xl text-white font-mono block mt-1">140,000 ETB</strong>
+              <span className="text-[9px] text-zinc-500 font-mono mt-1 block">Secure Escrow Safe</span>
+            </div>
+          </div>
+
+          {/* CRM ACTIVE APPLICANT TRAFFIC LEDGER CONTROL */}
+          <div className="bg-zinc-950 border border-zinc-800/80 p-5 rounded-3xl shadow-xl space-y-4">
             <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1.5">
-              <Plus size={14} className="text-amber-500" />
-              Publish New Vacancy
+              <Users size={14} className="text-amber-500" />
+              Incoming Candidate Placement Files ({applications.filter(a => a.agencyId === currentAgencyId).length})
             </h4>
 
-            <form onSubmit={handleAgencyPublish} className="space-y-3 text-xs">
-              <div className="grid grid-cols-2 gap-2">
+            {applications.filter(a => a.agencyId === currentAgencyId).length === 0 ? (
+              <p className="text-zinc-500 text-xs text-center py-4">No active candidates in pipeline.</p>
+            ) : (
+              <div className="space-y-4">
+                {applications.filter(a => a.agencyId === currentAgencyId).map(app => (
+                  <div key={app.id} className="bg-zinc-900/40 border border-zinc-850 p-4 rounded-2xl space-y-4 text-xs">
+                    <div className="flex justify-between items-start border-b border-zinc-900 pb-2.5">
+                      <div>
+                        <span className="text-[9px] text-amber-500 font-mono block">{app.id}</span>
+                        <strong className="text-white text-sm block mt-0.5">{app.applicantName}</strong>
+                        <span className="text-[10.5px] text-zinc-400">Position Applying: {app.jobTitle}</span>
+                      </div>
+                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-lg ${getStageColor(app.stage)}`}>
+                        {app.stage}
+                      </span>
+                    </div>
+
+                    {/* COMPLIANCE ATTACHMENTS FOR SECURITY CHECK */}
+                    <div className="bg-zinc-950 p-3 rounded-xl border border-zinc-850 grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div className="flex items-center gap-2">
+                        <FileText size={14} className="text-red-400" />
+                        <div>
+                          <span className="text-[10px] text-zinc-500 block">Biometric Passport</span>
+                          <strong className="text-zinc-300 block truncate">{app.documents.passport || "Passport_Selamawit.pdf"}</strong>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <FileText size={14} className="text-emerald-400" />
+                        <div>
+                          <span className="text-[10px] text-zinc-500 block">Smart CV Profile</span>
+                          <strong className="text-zinc-300 block truncate">{app.documents.cv}</strong>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <FileText size={14} className="text-blue-400" />
+                        <div>
+                          <span className="text-[10px] text-zinc-500 block">Fayda National ID</span>
+                          <strong className="text-zinc-300 block text-[9.5px]">VERIFIED (Fayda Digital Integration) ✅</strong>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* CRM APPLICATION STEP PROMOTER */}
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-black">Promote Applicant Courier Stage:</span>
+                      
+                      <div className="flex flex-wrap gap-1">
+                        <button
+                          onClick={() => handleAdvanceStage(app.id, "Documents Verified")}
+                          className={`px-2.5 py-1 rounded-lg border text-[9.5px] font-black transition-all ${
+                            app.stage === "Documents Verified" ? "bg-blue-600/20 border-blue-500 text-blue-400" : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-white"
+                          }`}
+                        >
+                          1. Verify Docs
+                        </button>
+                        <button
+                          onClick={() => handleAdvanceStage(app.id, "Under Review")}
+                          className={`px-2.5 py-1 rounded-lg border text-[9.5px] font-black transition-all ${
+                            app.stage === "Under Review" ? "bg-yellow-600/20 border-yellow-500 text-yellow-400" : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-white"
+                          }`}
+                        >
+                          2. Review Audit
+                        </button>
+                        <button
+                          onClick={() => handleAdvanceStage(app.id, "Interview Scheduled")}
+                          className={`px-2.5 py-1 rounded-lg border text-[9.5px] font-black transition-all ${
+                            app.stage === "Interview Scheduled" ? "bg-purple-600/20 border-purple-500 text-purple-400" : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-white"
+                          }`}
+                        >
+                          3. Set Interview
+                        </button>
+                        <button
+                          onClick={() => handleAdvanceStage(app.id, "Accepted")}
+                          className={`px-2.5 py-1 rounded-lg border text-[9.5px] font-black transition-all ${
+                            app.stage === "Accepted" ? "bg-emerald-600/20 border-emerald-500 text-emerald-400" : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-white"
+                          }`}
+                        >
+                          4. Clear Medical (Accept)
+                        </button>
+                        <button
+                          onClick={() => handleAdvanceStage(app.id, "Visa Processing")}
+                          className={`px-2.5 py-1 rounded-lg border text-[9.5px] font-black transition-all ${
+                            app.stage === "Visa Processing" ? "bg-indigo-600/20 border-indigo-500 text-indigo-400" : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-white"
+                          }`}
+                        >
+                          5. Visa Submission
+                        </button>
+                        <button
+                          onClick={() => handleAdvanceStage(app.id, "Travel Ready")}
+                          className={`px-2.5 py-1 rounded-lg border text-[9.5px] font-black transition-all ${
+                            app.stage === "Travel Ready" ? "bg-amber-500/20 border-amber-500 text-amber-400" : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-white"
+                          }`}
+                        >
+                          6. Issue Flight Ticket
+                        </button>
+                        <button
+                          onClick={() => handleAdvanceStage(app.id, "Completed")}
+                          className={`px-2.5 py-1 rounded-lg border text-[9.5px] font-black transition-all ${
+                            app.stage === "Completed" ? "bg-green-600/20 border-green-500 text-green-400" : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-white"
+                          }`}
+                        >
+                          7. Complete Travel
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* PUBLISH NEW JOB FORM */}
+          <div className="bg-zinc-950 border border-zinc-800/80 p-5 rounded-3xl shadow-xl space-y-3">
+            <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1.5">
+              <Plus size={14} className="text-[#C5A059]" />
+              Publish Audited Vacancy Placement
+            </h4>
+
+            <form onSubmit={handleAgencyPublish} className="space-y-3.5 text-xs">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[10px] text-zinc-400 block mb-1">Job Title</label>
+                  <label className="text-[10px] text-zinc-500 block mb-1 font-bold uppercase">Job Title</label>
                   <input
                     type="text"
                     value={newJobTitle}
                     onChange={(e) => setNewJobTitle(e.target.value)}
-                    placeholder="e.g. Executive Chef, Driver"
-                    className="w-full bg-neutral-900 border border-zinc-800 rounded-lg p-2 text-white focus:outline-none"
+                    placeholder="e.g., Senior Baker / Pastry Supervisor"
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-2.5 text-white"
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] text-zinc-400 block mb-1">Employer / Company Name</label>
+                  <label className="text-[10px] text-zinc-500 block mb-1 font-bold uppercase">Employer Company Name</label>
                   <input
                     type="text"
                     value={newJobEmployer}
                     onChange={(e) => setNewJobEmployer(e.target.value)}
-                    placeholder="e.g. Ritz Carlton Dubai"
-                    className="w-full bg-neutral-900 border border-zinc-800 rounded-lg p-2 text-white focus:outline-none"
+                    placeholder="e.g., FIVE Resorts Dubai"
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-2.5 text-white"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div>
-                  <label className="text-[10px] text-zinc-400 block mb-1">Destination</label>
+                  <label className="text-[10px] text-zinc-500 block mb-1 font-bold uppercase">Destination Country</label>
                   <select
                     value={newJobCountry}
                     onChange={(e) => setNewJobCountry(e.target.value)}
-                    className="w-full bg-neutral-900 border border-zinc-800 rounded-lg p-2 text-zinc-300 focus:outline-none"
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-2.5 text-zinc-300 focus:outline-none"
                   >
                     <option value="United Arab Emirates">Dubai / UAE 🇦🇪</option>
                     <option value="Poland">Poland 🇵🇱</option>
@@ -902,118 +1980,66 @@ export default function OverseasEmploymentModule({ isDarkMode, lang }: OverseasE
                 </div>
 
                 <div>
-                  <label className="text-[10px] text-zinc-400 block mb-1">Category</label>
+                  <label className="text-[10px] text-zinc-500 block mb-1 font-bold uppercase">Job Sector</label>
                   <select
                     value={newJobCategory}
                     onChange={(e) => setNewJobCategory(e.target.value as JobCategory)}
-                    className="w-full bg-neutral-900 border border-zinc-800 rounded-lg p-2 text-zinc-300 focus:outline-none"
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-2.5 text-zinc-300 focus:outline-none"
                   >
-                    <option value="Hotel">Hotel & Restaurant</option>
-                    <option value="Driver">Driver / Transport</option>
+                    <option value="Hotel">Hotel & Catering</option>
+                    <option value="Driver">Driver / Logistics</option>
                     <option value="Construction">Construction</option>
                     <option value="Nurse">Medical / Nurse</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="text-[10px] text-zinc-400 block mb-1">Salary Range</label>
+                  <label className="text-[10px] text-zinc-500 block mb-1 font-bold uppercase">Salary Scale</label>
                   <input
                     type="text"
                     value={newJobSalary}
                     onChange={(e) => setNewJobSalary(e.target.value)}
-                    placeholder="e.g. 4,500 AED/mo"
-                    className="w-full bg-neutral-900 border border-zinc-800 rounded-lg p-2 text-white focus:outline-none"
+                    placeholder="e.g., 4,500 AED / month"
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-2.5 text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-zinc-500 block mb-1 font-bold uppercase">Working Hours</label>
+                  <input
+                    type="text"
+                    value={newJobHours}
+                    onChange={(e) => setNewJobHours(e.target.value)}
+                    placeholder="e.g., 8 hours / day"
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-2.5 text-white"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-[10px] text-zinc-400 block mb-1">Job Description & Accommodation Details</label>
+                <label className="text-[10px] text-zinc-500 block mb-1 font-bold uppercase">Job Description & Accommodation Details</label>
                 <textarea
                   rows={2}
                   value={newJobDesc}
                   onChange={(e) => setNewJobDesc(e.target.value)}
-                  placeholder="Summarize working hours, flights, accommodation, and requirements..."
-                  className="w-full bg-neutral-900 border border-zinc-800 rounded-lg p-2 text-white focus:outline-none"
+                  placeholder="Elaborate on candidate requirements, language expectations, housing arrangements..."
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-2.5 text-white"
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full bg-[#C5A059] text-stone-950 font-black py-2.5 rounded-xl text-[10.5px] uppercase tracking-wider transition-all active:scale-[0.98] cursor-pointer"
+                className="w-full bg-[#C5A059] text-stone-950 font-black py-3 rounded-2xl text-[11px] uppercase tracking-wider transition-all shadow-md active:scale-[0.99] cursor-pointer"
               >
-                Launch Vacancy to Live Zone
+                Launch Vacancy placement
               </button>
             </form>
-          </div>
-
-          {/* MANAGE CANDIDATES INBOX */}
-          <div className="bg-neutral-950 border border-zinc-800 p-4 rounded-2xl space-y-3">
-            <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1.5">
-              <Users size={14} className="text-amber-500" />
-              Incoming Placement Applications ({applications.filter(a => a.agencyId === currentAgencyId).length})
-            </h4>
-
-            {applications.filter(a => a.agencyId === currentAgencyId).length === 0 ? (
-              <p className="text-[11px] text-zinc-500 py-2">No active applicant submissions for this agency.</p>
-            ) : (
-              <div className="space-y-3">
-                {applications.filter(a => a.agencyId === currentAgencyId).map(app => (
-                  <div key={app.id} className="bg-neutral-900 p-3.5 rounded-xl border border-zinc-800 space-y-3 text-[11px]">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <span className="text-[9px] text-amber-500 font-mono font-bold block">{app.id}</span>
-                        <strong className="text-white text-xs block mt-0.5">{app.applicantName}</strong>
-                        <span className="text-[10px] text-zinc-400">Position: {app.jobTitle}</span>
-                      </div>
-                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded ${getStageColor(app.stage)}`}>
-                        {app.stage}
-                      </span>
-                    </div>
-
-                    <div className="bg-neutral-950 p-2.5 rounded-lg border border-zinc-900 text-[10px] text-zinc-400 space-y-1">
-                      <div className="font-bold text-zinc-300">Compliance Files:</div>
-                      <div>📁 Passport File: <span className="text-emerald-400 font-bold">{app.documents.passport}</span> (Verified ✅)</div>
-                      <div>📁 Resume/CV: <span className="text-emerald-400 font-bold">{app.documents.cv}</span> (Verified ✅)</div>
-                    </div>
-
-                    {/* ACTIONS CONTROLLERS */}
-                    <div className="flex flex-wrap gap-1.5">
-                      <button
-                        onClick={() => handleAdvanceStage(app.id, "Documents Verified")}
-                        className="bg-neutral-950 hover:bg-zinc-800 border border-zinc-800 text-[9px] text-zinc-300 font-bold px-2 py-1 rounded transition-colors"
-                      >
-                        ✅ Verify Docs
-                      </button>
-                      <button
-                        onClick={() => handleAdvanceStage(app.id, "Under Review")}
-                        className="bg-neutral-950 hover:bg-zinc-800 border border-zinc-800 text-[9px] text-zinc-300 font-bold px-2 py-1 rounded transition-colors"
-                      >
-                        🔍 Screening Review
-                      </button>
-                      <button
-                        onClick={() => handleAdvanceStage(app.id, "Interview Scheduled")}
-                        className="bg-purple-950/40 border border-purple-500/30 text-[9px] text-purple-300 font-bold px-2 py-1 rounded transition-colors"
-                      >
-                        📅 Book Interview
-                      </button>
-                      <button
-                        onClick={() => handleAdvanceStage(app.id, "Accepted")}
-                        className="bg-emerald-950/40 border border-emerald-500/30 text-[9px] text-emerald-300 font-bold px-2 py-1 rounded transition-colors"
-                      >
-                        🎉 Accept Candidate
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         </div>
       )}
 
       {/* =========================================================================
-          SLIDE-UP DETAILED JOB VACANCY VIEW SHEET
+          SLIDE-UP DETAILED JOB VACANCY SHEET
           ========================================================================= */}
       <AnimatePresence>
         {selectedJob && (
@@ -1023,7 +2049,7 @@ export default function OverseasEmploymentModule({ isDarkMode, lang }: OverseasE
               animate={{ opacity: 0.5 }}
               exit={{ opacity: 0 }}
               onClick={() => setSelectedJob(null)}
-              className="fixed inset-0 bg-stone-900/50 backdrop-blur-xs z-40"
+              className="fixed inset-0 bg-stone-950/80 backdrop-blur-xs z-40"
             />
 
             <motion.div 
@@ -1031,31 +2057,31 @@ export default function OverseasEmploymentModule({ isDarkMode, lang }: OverseasE
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 220 }}
-              className="fixed bottom-0 left-0 right-0 max-h-[85%] bg-neutral-950 border-t-2 border-amber-500 rounded-t-[32px] overflow-y-auto z-50 p-5 shadow-2xl flex flex-col space-y-4 text-zinc-100"
+              className="fixed bottom-0 left-0 right-0 max-h-[90%] bg-zinc-950 border-t-2 border-[#C5A059] rounded-t-[32px] overflow-y-auto z-50 p-6 shadow-2xl flex flex-col space-y-4 text-zinc-100"
             >
-              <div className="w-12 h-1 bg-zinc-700 rounded-full mx-auto shrink-0 mb-1"></div>
+              <div className="w-12 h-1 bg-zinc-800 rounded-full mx-auto shrink-0 mb-1"></div>
 
-              {/* AGENCY OVERLAY BRAND HEADER */}
+              {/* AGENCY SUMMARY HEADER */}
               <div className="flex justify-between items-start">
                 <div className="space-y-1">
                   <span className="text-[10px] text-amber-500 uppercase tracking-widest font-black block">
                     {selectedJob.agencyName}
                   </span>
                   <h2 className="text-base font-black text-white leading-snug">
-                    {selectedJob.title}
+                    {lang === 'en' ? selectedJob.title : (selectedJob.titleAm || selectedJob.title)}
                   </h2>
                 </div>
                 <button 
                   onClick={() => setSelectedJob(null)}
-                  className="w-7 h-7 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-full font-bold flex items-center justify-center text-xs shrink-0 cursor-pointer"
+                  className="w-8 h-8 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 rounded-full font-bold flex items-center justify-center text-xs shrink-0 cursor-pointer"
                 >
                   ✕
                 </button>
               </div>
 
-              {/* COVER OR PRIMARY PIC */}
+              {/* COVER PICTURE */}
               {selectedJob.photos?.[0] && (
-                <div className="rounded-2xl overflow-hidden border border-zinc-800 shadow-md">
+                <div className="rounded-2xl overflow-hidden border border-zinc-850 shadow-md">
                   <img 
                     src={selectedJob.photos[0]} 
                     alt={selectedJob.title}
@@ -1065,40 +2091,40 @@ export default function OverseasEmploymentModule({ isDarkMode, lang }: OverseasE
                 </div>
               )}
 
-              {/* AGENCY METADATA PROFILE HEADER */}
-              <div className="bg-neutral-900 p-3.5 rounded-2xl border border-zinc-800 space-y-2.5">
+              {/* DETAILED AGENCY METADATA BLOCK */}
+              <div className="bg-zinc-900/60 p-4 rounded-2xl border border-zinc-850 space-y-3">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center text-base font-bold text-amber-500 border border-amber-500/20">
                     🏢
                   </div>
                   <div>
                     <strong className="text-xs text-white block">Agency Evaluation & Licensure</strong>
-                    <span className="text-[10px] text-zinc-400">License: {selectedJob.agencyLicense} (Active Subscription ✅)</span>
+                    <span className="text-[10px] text-zinc-400">License: {selectedJob.agencyLicense} (Active License ✅)</span>
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-3 gap-1 text-center text-[10px] text-zinc-400 border-t border-zinc-800 pt-2">
+                <div className="grid grid-cols-3 gap-1 text-center text-[10px] text-zinc-400 border-t border-zinc-800 pt-2.5">
                   <div>
-                    <span className="block text-white font-extrabold text-[11px]">★ 4.8 / 5.0</span>
+                    <span className="block text-white font-extrabold text-[11px]">★ 4.9 / 5.0</span>
                     Rating
                   </div>
                   <div>
-                    <span className="block text-white font-extrabold text-[11px]">&lt; 2 Hours</span>
+                    <span className="block text-white font-extrabold text-[11px]">&lt; 1 Hour</span>
                     Response
                   </div>
                   <div>
-                    <span className="block text-white font-extrabold text-[11px]">2,490+</span>
+                    <span className="block text-white font-extrabold text-[11px]">2,450+</span>
                     Placed
                   </div>
                 </div>
               </div>
 
-              {/* VACANCY DETAIL BLOCK */}
-              <div className="space-y-3.5 text-xs text-zinc-300">
+              {/* VACANCY PARAMETERS */}
+              <div className="space-y-4 text-xs text-zinc-300">
                 <div className="space-y-1.5">
-                  <h4 className="text-[10px] text-zinc-500 uppercase tracking-wider font-extrabold">Employment Parameters</h4>
-                  <div className="grid grid-cols-2 gap-2 bg-neutral-900/60 p-3 rounded-xl border border-zinc-900">
-                    <div>📍 Destination: <strong className="text-white">{selectedJob.country}</strong></div>
+                  <h4 className="text-[10px] text-zinc-500 uppercase tracking-widest font-extrabold">Employment Parameters</h4>
+                  <div className="grid grid-cols-2 gap-2 bg-zinc-900 p-3.5 rounded-2xl border border-zinc-850 font-sans">
+                    <div>📍 Destination: <strong className="text-white">{selectedJob.country} ({selectedJob.city})</strong></div>
                     <div>💼 Sector: <strong className="text-white">{selectedJob.category}</strong></div>
                     <div>💰 Salary: <strong className="text-emerald-400 font-extrabold">{selectedJob.salary}</strong></div>
                     <div>⏱️ Contract: <strong className="text-white">{selectedJob.contractDuration}</strong></div>
@@ -1107,17 +2133,15 @@ export default function OverseasEmploymentModule({ isDarkMode, lang }: OverseasE
                   </div>
                 </div>
 
-                {/* DETAILED CONTRACT DESCRIPTION */}
                 <div className="space-y-1.5">
-                  <h4 className="text-[10px] text-zinc-500 uppercase tracking-wider font-extrabold">Detailed Contract Description</h4>
+                  <h4 className="text-[10px] text-zinc-500 uppercase tracking-widest font-extrabold">Detailed Contract Description</h4>
                   <p className="text-[11px] leading-relaxed text-zinc-400 font-sans">
-                    {selectedJob.description}
+                    {lang === 'en' ? selectedJob.description : (selectedJob.descriptionAm || selectedJob.description)}
                   </p>
                 </div>
 
-                {/* COMPLIANCE CRITERIA */}
-                <div className="bg-neutral-900 p-3.5 rounded-2xl border border-zinc-800 space-y-2">
-                  <h4 className="text-[10px] text-amber-500 uppercase tracking-wider font-extrabold flex items-center gap-1">
+                <div className="bg-zinc-900 p-3.5 rounded-2xl border border-zinc-850 space-y-2">
+                  <h4 className="text-[10px] text-amber-500 uppercase tracking-widest font-extrabold flex items-center gap-1">
                     <Shield size={12} />
                     Ministry Compliance & Requirements
                   </h4>
@@ -1130,69 +2154,14 @@ export default function OverseasEmploymentModule({ isDarkMode, lang }: OverseasE
                 </div>
               </div>
 
-              {/* ACTION: APPLY AND ENTER MANDATORY STEP */}
+              {/* PLACEMENT BUTTON */}
               <div className="pt-2">
                 <button
                   onClick={() => { setApplyingJob(selectedJob); setSelectedJob(null); }}
-                  className="w-full bg-[#C5A059] text-stone-950 hover:bg-[#C5A059]/95 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all shadow-md active:scale-95 cursor-pointer"
+                  className="w-full bg-[#C5A059] text-stone-950 hover:bg-[#C5A059]/95 py-3 rounded-2xl font-bold text-xs uppercase tracking-wider transition-all shadow-md active:scale-95 cursor-pointer"
                 >
-                  📝 Apply & Upload Documents
+                  📝 {lang === 'en' ? "Apply & Upload Documents" : "ሰነዶችን በመጫን አሁኑኑ ያመልክቱ"}
                 </button>
-              </div>
-
-              {/* AGENCY REVIEWS LOG */}
-              <div className="p-4 bg-neutral-900 rounded-2xl border border-zinc-800 space-y-2">
-                <h4 className="text-xs font-black text-white uppercase tracking-wider flex justify-between items-center">
-                  <span>Candidate Placement Reviews</span>
-                  <span className="text-amber-500">★ 4.8 / 5.0</span>
-                </h4>
-
-                <div className="space-y-2 pt-1 max-h-40 overflow-y-auto">
-                  {reviews.filter(r => r.agencyId === selectedJob.agencyId).length === 0 ? (
-                    <p className="text-[10.5px] text-zinc-500">No reviews logged yet. Be the first to review after placement!</p>
-                  ) : (
-                    reviews.filter(r => r.agencyId === selectedJob.agencyId).map(rev => (
-                      <div key={rev.id} className="bg-neutral-950 p-2.5 rounded-lg text-[10.5px] space-y-1 border border-zinc-900">
-                        <div className="flex justify-between items-center text-[10px]">
-                          <strong className="text-zinc-300">{rev.userName}</strong>
-                          <span className="text-amber-500 font-extrabold">{"★".repeat(rev.rating)}</span>
-                        </div>
-                        <p className="text-zinc-400 font-sans leading-relaxed">{rev.comment}</p>
-                      </div>
-                    ))
-                  )}
-                </div>
-
-                {/* WRITE A REVIEW FORM */}
-                <form onSubmit={handlePostReview} className="space-y-2 border-t border-zinc-800 pt-3 text-[11px]">
-                  <strong className="text-zinc-300 block">Post Placement Review</strong>
-                  <div className="flex gap-1.5 items-center">
-                    <span className="text-zinc-500">Your Rating:</span>
-                    {[1, 2, 3, 4, 5].map(star => (
-                      <button 
-                        key={star} 
-                        type="button" 
-                        onClick={() => setUserReviewRating(star)}
-                        className={`text-sm ${star <= userReviewRating ? "text-amber-400" : "text-zinc-600"}`}
-                      >
-                        ★
-                      </button>
-                    ))}
-                  </div>
-                  <input
-                    type="text"
-                    value={userReviewComment}
-                    onChange={(e) => setUserReviewComment(e.target.value)}
-                    placeholder="Provide comments about agency services..."
-                    className="w-full bg-neutral-950 border border-zinc-800 rounded-lg p-2 text-white focus:outline-none"
-                  />
-                  <button 
-                    type="submit"
-                    className="bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-stone-950 font-black px-3 py-1.5 rounded text-[9.5px] uppercase border border-amber-500/30 transition-all cursor-pointer"
-                  >
-                    Submit Verified Review
-                  </button>
-                </form>
               </div>
             </motion.div>
           </>
@@ -1200,7 +2169,7 @@ export default function OverseasEmploymentModule({ isDarkMode, lang }: OverseasE
       </AnimatePresence>
 
       {/* =========================================================================
-          APPLICATION FORM DIALOG (MANDATORY DOCUMENT CHECKS)
+          APPLICATION FORM MODAL DIALOG
           ========================================================================= */}
       <AnimatePresence>
         {applyingJob && (
@@ -1210,14 +2179,14 @@ export default function OverseasEmploymentModule({ isDarkMode, lang }: OverseasE
               animate={{ opacity: 0.5 }}
               exit={{ opacity: 0 }}
               onClick={() => setApplyingJob(null)}
-              className="fixed inset-0 bg-stone-900/50 backdrop-blur-xs z-50"
+              className="fixed inset-0 bg-stone-950/85 backdrop-blur-xs z-50"
             />
 
             <motion.div 
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="fixed top-[10%] left-4 right-4 max-h-[80%] bg-neutral-950 border-2 border-[#C5A059] rounded-3xl z-51 overflow-y-auto p-5 shadow-2xl space-y-4 text-zinc-100"
+              className="fixed top-[10%] left-4 right-4 max-h-[80%] bg-zinc-950 border-2 border-[#C5A059] rounded-3xl z-51 overflow-y-auto p-5 shadow-2xl space-y-4 text-zinc-100"
             >
               <div className="flex justify-between items-center border-b border-zinc-900 pb-2">
                 <div>
@@ -1226,31 +2195,44 @@ export default function OverseasEmploymentModule({ isDarkMode, lang }: OverseasE
                 </div>
                 <button 
                   onClick={() => setApplyingJob(null)}
-                  className="w-6 h-6 bg-zinc-800 text-zinc-300 rounded-full font-bold flex items-center justify-center text-xs"
+                  className="w-6 h-6 bg-zinc-900 text-zinc-300 rounded-full font-bold flex items-center justify-center text-xs"
                 >
                   ✕
                 </button>
               </div>
 
-              {/* REGULATORY CHECKLIST STAT */}
               <div className="bg-amber-500/5 p-3 rounded-xl border border-dashed border-amber-500/30 flex items-center gap-2.5 text-[10px] text-zinc-300 leading-relaxed font-sans">
                 <Lock size={16} className="text-amber-500 shrink-0" />
                 <span>
-                  <strong>Strict Security Rule:</strong> All credentials are encrypted end-to-end to secure personal records against unauthorized third-party scanning.
+                  <strong>Encrypted Transmission:</strong> Your Biometric passport and Fayda ID are securely locked. Only Ministry certified staff can inspect credentials.
                 </span>
               </div>
 
-              {/* UPLOAD FORM CHANNELS */}
+              {/* SMART CV OPT-IN CHECKBOX */}
+              <div className="bg-zinc-900/60 p-3.5 rounded-2xl border border-zinc-850 flex items-center justify-between text-xs">
+                <div>
+                  <strong className="text-white block">Apply using EveryZone Smart CV</strong>
+                  <span className="text-[10px] text-zinc-400 mt-0.5">Use your live builder profile details to pre-fill credentials.</span>
+                </div>
+                <input 
+                  type="checkbox" 
+                  checked={useSmartCV} 
+                  onChange={(e) => setUseSmartCV(e.target.checked)}
+                  className="rounded text-amber-500 w-4 h-4 focus:ring-0"
+                />
+              </div>
+
+              {/* UPLOAD PORTALS */}
               <div className="space-y-3.5 text-xs">
                 {/* 1. Passport Upload */}
                 <div className="space-y-1">
                   <label className="text-zinc-400 font-bold block">1. Biometric Passport (ማንነቱን የሚያረጋግጥ ፓስፖርት) *</label>
-                  <div className="bg-neutral-900 border border-zinc-800 p-3 rounded-xl flex items-center justify-between">
+                  <div className="bg-zinc-900 border border-zinc-800 p-3 rounded-xl flex items-center justify-between">
                     <span className="text-[10.5px] text-zinc-400 font-mono">
                       {uploadedFiles.passport ? `✅ ${uploadedFiles.passport.name}` : "Passport_Verify_Pack.pdf"}
                     </span>
                     <label className="bg-amber-500/10 hover:bg-amber-500 border border-amber-500/30 text-amber-400 hover:text-stone-950 font-black px-2.5 py-1.5 rounded text-[9.5px] uppercase cursor-pointer transition-all">
-                      {isUploading === "passport" ? "Uploading..." : "Upload PDF / JPG"}
+                      {isUploading === "passport" ? "Uploading..." : "Upload File"}
                       <input 
                         type="file" 
                         accept=".pdf,.jpg,.jpeg,.png"
@@ -1261,29 +2243,31 @@ export default function OverseasEmploymentModule({ isDarkMode, lang }: OverseasE
                   </div>
                 </div>
 
-                {/* 2. CV/Resume Upload */}
-                <div className="space-y-1">
-                  <label className="text-zinc-400 font-bold block">2. Professional Curriculum Vitae (CV) *</label>
-                  <div className="bg-neutral-900 border border-zinc-800 p-3 rounded-xl flex items-center justify-between">
-                    <span className="text-[10.5px] text-zinc-400 font-mono">
-                      {uploadedFiles.cv ? `✅ ${uploadedFiles.cv.name}` : "CV_Professional_Resume.pdf"}
-                    </span>
-                    <label className="bg-amber-500/10 hover:bg-amber-500 border border-amber-500/30 text-amber-400 hover:text-stone-950 font-black px-2.5 py-1.5 rounded text-[9.5px] uppercase cursor-pointer transition-all">
-                      {isUploading === "cv" ? "Uploading..." : "Upload CV"}
-                      <input 
-                        type="file" 
-                        accept=".pdf,.doc,.docx"
-                        onChange={(e) => handleSimulateUpload("cv", e)} 
-                        className="hidden" 
-                      />
-                    </label>
+                {/* 2. CV/Resume Upload (Manual if not opt-in) */}
+                {!useSmartCV && (
+                  <div className="space-y-1">
+                    <label className="text-zinc-400 font-bold block">2. Professional Curriculum Vitae (CV)</label>
+                    <div className="bg-zinc-900 border border-zinc-800 p-3 rounded-xl flex items-center justify-between">
+                      <span className="text-[10.5px] text-zinc-400 font-mono">
+                        {uploadedFiles.cv ? `✅ ${uploadedFiles.cv.name}` : "CV_Professional_Resume.pdf"}
+                      </span>
+                      <label className="bg-amber-500/10 hover:bg-amber-500 border border-amber-500/30 text-amber-400 hover:text-stone-950 font-black px-2.5 py-1.5 rounded text-[9.5px] uppercase cursor-pointer transition-all">
+                        {isUploading === "cv" ? "Uploading..." : "Upload CV"}
+                        <input 
+                          type="file" 
+                          accept=".pdf,.doc,.docx"
+                          onChange={(e) => handleSimulateUpload("cv", e)} 
+                          className="hidden" 
+                        />
+                      </label>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* 3. Fayda Digital ID */}
                 <div className="space-y-1">
-                  <label className="text-zinc-400 block font-medium">3. Fayda National Digital ID (Optional)</label>
-                  <div className="bg-neutral-900 border border-zinc-800 p-3 rounded-xl flex items-center justify-between">
+                  <label className="text-zinc-400 block font-medium">3. Fayda National Digital ID (Auto-verified)</label>
+                  <div className="bg-zinc-900 border border-zinc-800 p-3 rounded-xl flex items-center justify-between">
                     <span className="text-[10.5px] text-zinc-400 font-mono">
                       {uploadedFiles.nationalId ? `✅ ${uploadedFiles.nationalId.name}` : "Digital_Fayda_ID.png"}
                     </span>
@@ -1307,12 +2291,12 @@ export default function OverseasEmploymentModule({ isDarkMode, lang }: OverseasE
                     value={appNotes}
                     onChange={(e) => setAppNotes(e.target.value)}
                     placeholder="Describe any professional certificates, language proficiency, or details..."
-                    className="w-full bg-neutral-900 border border-zinc-800 rounded-lg p-2 text-white text-xs focus:outline-none focus:border-amber-500"
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-2.5 text-white text-xs focus:outline-none focus:border-amber-500"
                   />
                 </div>
               </div>
 
-              {/* ACTION: FINAL LOG SUBMIT */}
+              {/* ACTION: FINAL SUBMIT */}
               <div className="pt-2">
                 <button
                   type="button"

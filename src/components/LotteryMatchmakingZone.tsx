@@ -38,6 +38,19 @@ const VERIFIED_CANDIDATES = [
     location: "Bole, Addis Ababa",
     interests: ["Specialty Coffee Tasting", "Ethio-Jazz on Vinyl", "Tech Entrepreneurship", "Lalibela-style Painting"],
     bio: "Passionate about contemporary ventures, traditional jazz coffee lounges, and ancient Ethiopian architectural restoration. Verified via national digital registry.",
+    realName: "Samrawit Hailu",
+    realPhone: "+251 911 245 678",
+    realEmail: "samrawit.h@everyzone.com",
+    education: "M.Sc. AAU Architecture",
+    profession: "Heritage Restoration Architect",
+    religion: "Orthodox Christian",
+    languages: "Amharic, English, Italian",
+    country: "Ethiopia",
+    city: "Addis Ababa",
+    height: "1.68m",
+    phoneVerified: true,
+    emailVerified: true,
+    idVerified: true,
     icebreakers: [
       { sender: 'them', text: "Selam! Pleased to be paired with you today. Standard 24h anonymity protocol is active. 🛡️", time: "11:02 AM" },
       { sender: 'them', text: "I see you also have a Verified Digital ID badge active. What kind of passions or hobbies get you inspired?", time: "11:04 AM" }
@@ -59,6 +72,19 @@ const VERIFIED_CANDIDATES = [
     location: "Kazanchis, Addis Ababa",
     interests: ["Contemporary Art Galleries", "Entoto Forest Trekking", "Reggae & Traditional Fusion", "Community Tutoring"],
     bio: "Independent curator organizing modern art exhibitions. Dedicated to urban youth tutoring on weekends. Verified via national digital registry.",
+    realName: "Solomon Tekle",
+    realPhone: "+251 912 876 543",
+    realEmail: "solomon.t@everyzone.com",
+    education: "BFA AAU Fine Arts & Curation",
+    profession: "Art Gallery Curator",
+    religion: "Protestant Christian",
+    languages: "Amharic, English, Afaan Oromoo",
+    country: "Ethiopia",
+    city: "Addis Ababa",
+    height: "1.82m",
+    phoneVerified: true,
+    emailVerified: true,
+    idVerified: true,
     icebreakers: [
       { sender: 'them', text: "Atege (Greetings)! Extremely glad to connect under this secure matchmaking slot today. 🙏", time: "10:15 AM" },
       { sender: 'them', text: "How is your Sunday going? Let's talk about some art, hiking or what you love most about our culture.", time: "10:17 AM" }
@@ -68,7 +94,7 @@ const VERIFIED_CANDIDATES = [
       "It feels so refreshing that Every-zone blocks screenshots. You can share your thoughts honestly, knowing that privacy-protection is fully active.",
       "Indeed! The Fayda Digital ID requirement completely filters out bad actors. Authentic Abyssinia connections are rare and premium.",
       "Totally! Tomorrow we'll receive a prompt to reveal ourselves. Let's enjoy the pure connection without labels first.",
-      "That sounds like an amazing plan. Tell me more about what you do!"
+      "That sounds like an amazing plan. Tell more about what you do!"
     ]
   }
 ];
@@ -108,6 +134,53 @@ export function LotteryMatchmakingZone({ walletBalance, setWalletBalance, isDark
   const [screenShieldActive, setScreenShieldActive] = useState<boolean>(true);
   const [matchCountdown, setMatchCountdown] = useState<string>('23 hours 58 mins remaining');
   const [responseIndex, setResponseIndex] = useState<number>(0);
+
+  // --- MUTUAL IDENTITY REVEAL AGREEMENT ---
+  const [mutualRevealRequested, setMutualRevealRequested] = useState<boolean>(false);
+  const [mutualRevealUnlocked, setMutualRevealUnlocked] = useState<boolean>(false);
+  const [showFullBios, setShowFullBios] = useState<boolean>(false);
+
+  // --- AI SMART MATCHMAKING PREFERENCE FILTERS ---
+  const [prefAgeMin, setPrefAgeMin] = useState<number>(20);
+  const [prefAgeMax, setPrefAgeMax] = useState<number>(35);
+  const [prefReligion, setPrefReligion] = useState<string>('All');
+  const [prefLanguage, setPrefLanguage] = useState<string>('All');
+  const [prefEducation, setPrefEducation] = useState<string>('All');
+
+  const handleRequestMutualReveal = () => {
+    if (mutualRevealRequested) return;
+    setMutualRevealRequested(true);
+    
+    const reqMsg = {
+      sender: 'system' as const,
+      text: `🤝 You have requested a Mutual Identity Reveal. Once the other participant consents, verified contact numbers and real full names will unlock in this escrow tunnel.`,
+      time: 'SYSTEM'
+    };
+    setSecuredMessages(prev => [...prev, reqMsg]);
+
+    setTimeout(() => {
+      setMutualRevealUnlocked(true);
+      const pairedPeer = VERIFIED_CANDIDATES[activeCandidateIndex];
+      const unlockMsg = {
+         sender: 'system' as const,
+         text: `🎉 INTEGRITY ESCROW UNLOCKED! Mutual consent verified.
+         
+📌 Real Profile Credentials:
+• Full Name: ${pairedPeer.realName}
+• Verified Phone Number: ${pairedPeer.realPhone}
+• Verified Gmail: ${pairedPeer.realEmail}
+• Higher Education: ${pairedPeer.education}
+• Profession: ${pairedPeer.profession}
+• Religion / Denomination: ${pairedPeer.religion}
+• Primary Languages: ${pairedPeer.languages}
+• Geographic Location: ${pairedPeer.city}, ${pairedPeer.country}
+• Height Index: ${pairedPeer.height}
+• Current Verification: Fayda National ID (100% Genuine, No Bots)`,
+         time: 'SYSTEM'
+      };
+      setSecuredMessages(prev => [...prev, unlockMsg]);
+    }, 2000);
+  };
 
   // --- USER DIGITAL ID VERIFICATION STATUS ---
   const [verification, setVerification] = useState<VerificationData>(() => {
@@ -1607,85 +1680,210 @@ export function LotteryMatchmakingZone({ walletBalance, setWalletBalance, isDark
                             )}
                           </div>
                         ) : (
-                          /* THE GOLDEN STANDARD SUNDAY MATCH CARD */
-                          <div className="bg-white dark:bg-zinc-950 border-2 border-[#C5A059] p-5 rounded-3xl relative overflow-hidden shadow-md animate-fadeIn flex flex-col md:flex-row gap-5">
-                            {/* Watermark security accent */}
-                            <div className="absolute -top-3 -right-3 text-[9px] uppercase tracking-wider text-[#C5A059]/10 rotate-12 font-mono select-none font-bold">
-                              CONFIDENTIAL MASK
-                            </div>
-
-                            {/* Left avatar block with dynamic placeholder */}
-                            <div className="w-full md:w-36 shrink-0 flex flex-col items-center justify-center p-4 bg-[#F9F7F2] dark:bg-zinc-900 border border-stone-200 dark:border-zinc-850 rounded-2xl relative">
-                              <div className="absolute top-2 left-2 flex items-center gap-1">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                <span className="text-[7.5px] uppercase font-bold text-emerald-600">Active</span>
+                          <div className="space-y-4">
+                            {/* AI SMART MATCHMAKING PREFERENCE FILTERS PANEL */}
+                            <div className="bg-[#FAF8F5] dark:bg-zinc-900 border border-stone-250 dark:border-zinc-800 p-4 rounded-3xl space-y-3 shadow-xs animate-fadeIn">
+                              <div className="flex items-center gap-1.5 border-b border-stone-200 dark:border-zinc-800 pb-2">
+                                <Sparkles className="text-[#C5A059]" size={15} />
+                                <h4 className="text-xs font-black font-serif text-stone-900 dark:text-white uppercase tracking-tight">
+                                  🧬 AI Smart Matching Preferences (የማዛመጃ መስፈርቶች)
+                                </h4>
                               </div>
-                              <div className="w-16 h-16 rounded-full bg-[#1E3A1A] text-white flex items-center justify-center font-serif text-xl font-bold shadow-inner relative">
-                                <UserCheck size={28} className="text-[#C5A059]" />
-                                <div className="absolute -bottom-1.5 -right-1 bg-emerald-500 text-white p-0.5 rounded-full border border-white">
-                                  <Check size={9} strokeWidth={4} />
-                                </div>
-                              </div>
-                              <span className="text-[12px] font-black text-stone-900 dark:text-white mt-3 font-mono">
-                                {VERIFIED_CANDIDATES[activeCandidateIndex].alias}
-                              </span>
-                              <div className="mt-1 bg-emerald-500/10 text-emerald-800 dark:text-emerald-400 px-2 py-0.5 rounded-md border border-emerald-500/20 text-[7.5px] uppercase font-bold tracking-wider leading-none">
-                                Digital ID Active
-                              </div>
-                            </div>
-
-                            {/* Right match layout and stats */}
-                            <div className="flex-1 flex flex-col justify-between space-y-3">
-                              <div className="space-y-1.5">
-                                <div className="flex flex-wrap items-center justify-between gap-2">
-                                  <span className="text-[10px] uppercase font-extrabold text-[#C5A059] tracking-wider font-mono">
-                                     Sunday Companion Match Card
-                                  </span>
-                                  <div className="bg-[#1E3A1A] text-[#C5A059] px-2.5 py-1 rounded-lg border border-[#C5A059]/20 flex items-center gap-1 text-[9px] font-black leading-none shrink-0 uppercase tracking-tight">
-                                    <Clock size={10} />
-                                    <span>Expires in: {matchCountdown.split('remaining')[0]}</span>
+                              
+                              <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-[10.5px]">
+                                {/* Age Preference */}
+                                <div className="space-y-1">
+                                  <span className="font-bold text-stone-600 dark:text-zinc-400 block">Age Target:</span>
+                                  <div className="flex items-center gap-1">
+                                    <input
+                                      type="number"
+                                      value={prefAgeMin}
+                                      onChange={(e) => setPrefAgeMin(Number(e.target.value))}
+                                      className="w-10 bg-white dark:bg-zinc-950 px-1 py-0.5 rounded border text-center font-mono font-bold dark:border-zinc-800 text-stone-800 dark:text-white"
+                                    />
+                                    <span>-</span>
+                                    <input
+                                      type="number"
+                                      value={prefAgeMax}
+                                      onChange={(e) => setPrefAgeMax(Number(e.target.value))}
+                                      className="w-10 bg-white dark:bg-zinc-950 px-1 py-0.5 rounded border text-center font-mono font-bold dark:border-zinc-800 text-stone-800 dark:text-white"
+                                    />
                                   </div>
                                 </div>
-                                <h4 className="text-sm font-black text-stone-900 dark:text-white font-serif italic">
-                                  Fayda Authenticated Partner Matrix Found!
-                                </h4>
-                                
-                                <div className="flex flex-wrap items-center gap-1.5 text-xs text-stone-600 dark:text-zinc-300">
-                                  <span className="font-bold text-stone-800 dark:text-white">Compatibility:</span>
-                                  <span className="text-[#1E3A1A] dark:text-[#C5A059] font-black">{VERIFIED_CANDIDATES[activeCandidateIndex].matchingScore}% Align</span>
-                                  <span>•</span>
-                                  <span className="font-bold text-stone-800 dark:text-white">Fayda ID:</span>
-                                  <span className="font-mono text-[10px] uppercase text-stone-500">{VERIFIED_CANDIDATES[activeCandidateIndex].faydaId}</span>
+
+                                {/* Religion Filter */}
+                                <div className="space-y-1">
+                                  <span className="font-bold text-stone-600 dark:text-zinc-400 block">Religion:</span>
+                                  <select
+                                    value={prefReligion}
+                                    onChange={(e) => setPrefReligion(e.target.value)}
+                                    className="w-full bg-white dark:bg-zinc-950 px-1.5 py-0.5 rounded border dark:border-zinc-800 text-stone-850 dark:text-white font-medium focus:outline-none"
+                                  >
+                                    <option value="All">All</option>
+                                    <option value="Orthodox Christian">Orthodox Christian</option>
+                                    <option value="Protestant Christian">Protestant Christian</option>
+                                    <option value="Muslim">Muslim</option>
+                                    <option value="Catholic">Catholic</option>
+                                  </select>
                                 </div>
 
-                                <p className="text-[11px] text-stone-500 dark:text-zinc-400 leading-relaxed italic">
-                                  "Real phone index, name, and profile photos are securely masked for the first 24 hours to guard your privacy in Every-zone."
-                                </p>
+                                {/* Language Filter */}
+                                <div className="space-y-1">
+                                  <span className="font-bold text-stone-600 dark:text-zinc-400 block">Language:</span>
+                                  <select
+                                    value={prefLanguage}
+                                    onChange={(e) => setPrefLanguage(e.target.value)}
+                                    className="w-full bg-white dark:bg-zinc-950 px-1.5 py-0.5 rounded border dark:border-zinc-800 text-stone-850 dark:text-white font-medium focus:outline-none"
+                                  >
+                                    <option value="All">All</option>
+                                    <option value="Amharic">Amharic</option>
+                                    <option value="English">English</option>
+                                    <option value="Afaan Oromoo">Afaan Oromoo</option>
+                                    <option value="Italian">Italian</option>
+                                  </select>
+                                </div>
 
-                                <div className="flex flex-wrap gap-1 mt-1">
-                                  {VERIFIED_CANDIDATES[activeCandidateIndex].interests.map((it, i) => (
-                                    <span key={i} className="text-[9px] font-bold px-2 py-0.5 bg-stone-100 dark:bg-zinc-900 text-stone-700 dark:text-zinc-300 rounded border border-stone-200 dark:border-zinc-885">
-                                      {it}
-                                    </span>
-                                  ))}
+                                {/* Education Filter */}
+                                <div className="space-y-1">
+                                  <span className="font-bold text-stone-600 dark:text-zinc-400 block">Education:</span>
+                                  <select
+                                    value={prefEducation}
+                                    onChange={(e) => setPrefEducation(e.target.value)}
+                                    className="w-full bg-white dark:bg-zinc-950 px-1.5 py-0.5 rounded border dark:border-zinc-800 text-stone-850 dark:text-white font-medium focus:outline-none"
+                                  >
+                                    <option value="All">All</option>
+                                    <option value="M.Sc. AAU Architecture">M.Sc. Postgraduate</option>
+                                    <option value="BFA AAU Fine Arts & Curation">BFA Graduate</option>
+                                  </select>
+                                </div>
+
+                                {/* Distance Target */}
+                                <div className="space-y-1">
+                                  <span className="font-bold text-stone-600 dark:text-zinc-400 block">Distance Limit:</span>
+                                  <select
+                                    className="w-full bg-white dark:bg-zinc-950 px-1.5 py-0.5 rounded border dark:border-zinc-800 text-stone-850 dark:text-white font-medium focus:outline-none"
+                                  >
+                                    <option>Within Addis Ababa (&lt;10km)</option>
+                                    <option>Across Ethiopia (&lt;500km)</option>
+                                  </select>
+                                </div>
+                              </div>
+                              <p className="text-[9px] text-[#C5A059] italic font-mono uppercase tracking-wider">
+                                ⚡ AI Recommendation engine matches based on Age, Country, Religion, Languages, Education & Proximity indexes.
+                              </p>
+                            </div>
+
+                            {/* THE GOLDEN STANDARD SUNDAY MATCH CARD */}
+                            <div className="bg-white dark:bg-zinc-950 border-2 border-[#C5A059] p-5 rounded-3xl relative overflow-hidden shadow-md animate-fadeIn flex flex-col md:flex-row gap-5">
+                              {/* Watermark security accent */}
+                              <div className="absolute -top-3 -right-3 text-[9px] uppercase tracking-wider text-[#C5A059]/10 rotate-12 font-mono select-none font-bold">
+                                CONFIDENTIAL MASK
+                              </div>
+
+                              {/* Left avatar block with dynamic placeholder */}
+                              <div className="w-full md:w-44 shrink-0 flex flex-col items-center justify-center p-4 bg-[#F9F7F2] dark:bg-zinc-900 border border-stone-200 dark:border-zinc-850 rounded-2xl relative">
+                                <div className="absolute top-2 left-2 flex items-center gap-1">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                  <span className="text-[7.5px] uppercase font-bold text-emerald-600">Active</span>
+                                </div>
+                                <div className="w-20 h-20 rounded-full bg-[#1E3A1A] text-white flex items-center justify-center font-serif text-xl font-bold shadow-inner relative">
+                                  <UserCheck size={32} className="text-[#C5A059]" />
+                                  <div className="absolute -bottom-1.5 -right-1 bg-emerald-500 text-white p-0.5 rounded-full border border-white">
+                                    <Check size={11} strokeWidth={4} />
+                                  </div>
+                                </div>
+                                <span className="text-sm font-black text-stone-900 dark:text-white mt-3 font-mono">
+                                  {VERIFIED_CANDIDATES[activeCandidateIndex].alias}
+                                </span>
+                                <div className="mt-1 bg-emerald-500/10 text-emerald-800 dark:text-emerald-400 px-2 py-0.5 rounded-md border border-emerald-500/20 text-[7.5px] uppercase font-bold tracking-wider leading-none">
+                                  Digital ID Active
+                                </div>
+
+                                {/* Trust status badges */}
+                                <div className="flex items-center gap-1 mt-2.5 pt-2 border-t border-stone-200 dark:border-zinc-800 w-full justify-center text-[9px] text-stone-500 dark:text-zinc-400">
+                                  <span title="Phone Verified" className="bg-stone-100 dark:bg-zinc-800 px-1 py-0.5 rounded text-emerald-650 font-bold">📞 Phone</span>
+                                  <span title="Email Verified" className="bg-stone-100 dark:bg-zinc-800 px-1 py-0.5 rounded text-emerald-650 font-bold">✉️ Email</span>
+                                  <span title="ID Verified" className="bg-stone-100 dark:bg-zinc-800 px-1 py-0.5 rounded text-emerald-650 font-bold">🪪 ID</span>
                                 </div>
                               </div>
 
-                              <div className="flex items-center gap-2 pt-1 border-t border-stone-150 dark:border-zinc-800">
-                                <button
-                                  onClick={() => setAnonymousChatOpen(true)}
-                                  className="flex-1 py-2 px-3 bg-[#1E3A1A] text-white hover:opacity-95 rounded-xl text-xs font-black uppercase text-center flex items-center justify-center gap-1.5 active:scale-97 transition shadow-xs"
-                                >
-                                  <MessageSquare size={13} fill="currentColor" />
-                                  <span>Open Anonymous Chat Terminal</span>
-                                </button>
-                                <button
-                                  onClick={handleResetMatch}
-                                  className="p-2 bg-stone-100 dark:bg-zinc-900 hover:bg-neutral-200 text-stone-505 hover:text-red-650 rounded-xl transition duration-200"
-                                  title="Unmatch Companion"
-                                >
-                                  <UserX size={15} />
-                                </button>
+                              {/* Right match layout and stats */}
+                              <div className="flex-1 flex flex-col justify-between space-y-3">
+                                <div className="space-y-1.5">
+                                  <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <span className="text-[10px] uppercase font-extrabold text-[#C5A059] tracking-wider font-mono">
+                                       Sunday Companion Match Card
+                                    </span>
+                                    <div className="bg-[#1E3A1A] text-[#C5A059] px-2.5 py-1 rounded-lg border border-[#C5A059]/20 flex items-center gap-1 text-[9px] font-black leading-none shrink-0 uppercase tracking-tight">
+                                      <Clock size={10} />
+                                      <span>Expires in: {matchCountdown.split('remaining')[0]}</span>
+                                    </div>
+                                  </div>
+                                  <h4 className="text-sm font-black text-stone-900 dark:text-white font-serif italic">
+                                    Fayda Authenticated Partner Matrix Found!
+                                  </h4>
+                                  
+                                  <div className="flex flex-wrap items-center gap-1.5 text-xs text-stone-600 dark:text-zinc-300">
+                                    <span className="font-bold text-stone-800 dark:text-white">Compatibility:</span>
+                                    <span className="text-[#1E3A1A] dark:text-[#C5A059] font-black">{VERIFIED_CANDIDATES[activeCandidateIndex].matchingScore}% Align</span>
+                                    <span>•</span>
+                                    <span className="font-bold text-stone-800 dark:text-white">Fayda ID:</span>
+                                    <span className="font-mono text-[10px] uppercase text-stone-500">{VERIFIED_CANDIDATES[activeCandidateIndex].faydaId}</span>
+                                  </div>
+
+                                  <p className="text-[11px] text-stone-500 dark:text-zinc-400 leading-relaxed italic">
+                                    "Real phone index, name, and profile photos are securely masked for the first 24 hours to guard your privacy in Every-zone."
+                                  </p>
+
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    {VERIFIED_CANDIDATES[activeCandidateIndex].interests.map((it, i) => (
+                                      <span key={i} className="text-[9px] font-bold px-2 py-0.5 bg-stone-100 dark:bg-zinc-900 text-stone-700 dark:text-zinc-300 rounded border border-stone-200 dark:border-zinc-885">
+                                        {it}
+                                      </span>
+                                    ))}
+                                  </div>
+
+                                  {/* EXPANDED DETAILED MARITAL AND PROFESSION ATTRIBUTES */}
+                                  <div className="pt-2">
+                                    <button
+                                      onClick={() => setShowFullBios(!showFullBios)}
+                                      className="text-[10.5px] text-[#C5A059] font-black flex items-center gap-1 underline hover:opacity-80"
+                                    >
+                                      <span>{showFullBios ? 'Hide Detailed Profile 📋' : 'Show Complete Serious Profile & Marital Bio 📋'}</span>
+                                    </button>
+
+                                    {showFullBios && (
+                                      <div className="mt-3 bg-stone-50 dark:bg-zinc-900/50 p-3 rounded-2xl border border-stone-200/60 dark:border-zinc-800 text-[11px] text-stone-700 dark:text-zinc-300 grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1.5 animate-fadeIn">
+                                        <div className="md:col-span-2 italic text-[11px] pb-1.5 border-b border-stone-100 dark:border-zinc-800 text-stone-500 dark:text-zinc-400">
+                                          "{VERIFIED_CANDIDATES[activeCandidateIndex].bio}"
+                                        </div>
+                                        <div><strong>Education:</strong> {VERIFIED_CANDIDATES[activeCandidateIndex].education}</div>
+                                        <div><strong>Profession:</strong> {VERIFIED_CANDIDATES[activeCandidateIndex].profession}</div>
+                                        <div><strong>Religion / Denomination:</strong> {VERIFIED_CANDIDATES[activeCandidateIndex].religion}</div>
+                                        <div><strong>Languages:</strong> {VERIFIED_CANDIDATES[activeCandidateIndex].languages}</div>
+                                        <div><strong>Location:</strong> {VERIFIED_CANDIDATES[activeCandidateIndex].city}, {VERIFIED_CANDIDATES[activeCandidateIndex].country}</div>
+                                        <div><strong>Height Index:</strong> {VERIFIED_CANDIDATES[activeCandidateIndex].height}</div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-2 pt-1 border-t border-stone-150 dark:border-zinc-800">
+                                  <button
+                                    onClick={() => setAnonymousChatOpen(true)}
+                                    className="flex-1 py-2 px-3 bg-[#1E3A1A] text-white hover:opacity-95 rounded-xl text-xs font-black uppercase text-center flex items-center justify-center gap-1.5 active:scale-97 transition shadow-xs"
+                                  >
+                                    <MessageSquare size={13} fill="currentColor" />
+                                    <span>Open Anonymous Chat Terminal</span>
+                                  </button>
+                                  <button
+                                    onClick={handleResetMatch}
+                                    className="p-2 bg-stone-100 dark:bg-zinc-900 hover:bg-neutral-200 text-stone-505 hover:text-red-650 rounded-xl transition duration-200"
+                                    title="Unmatch Companion"
+                                  >
+                                    <UserX size={15} />
+                                  </button>
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -1725,6 +1923,18 @@ export function LotteryMatchmakingZone({ walletBalance, setWalletBalance, isDark
                           </div>
                           
                           <div className="flex items-center gap-2">
+                            <button
+                              onClick={handleRequestMutualReveal}
+                              disabled={mutualRevealRequested}
+                              className={`text-[9.5px] uppercase font-mono font-black px-2 py-1 rounded-lg border transition ${
+                                mutualRevealRequested
+                                  ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+                                  : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
+                              }`}
+                              title="Request Mutual Identity & Contact Reveal"
+                            >
+                              {mutualRevealRequested ? '🤝 Requested' : '🤝 Reveal ID'}
+                            </button>
                             <button
                               onClick={() => {
                                 triggerScreenshotBlackout();

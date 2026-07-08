@@ -19,20 +19,6 @@ const PORT = 3000;
 
 app.use(express.json());
 
-// Register all modular Authentication, Orders and Escrow APIs
-registerAuthModule(app);
-registerOrdersModule(app);
-registerWalletModule(app);
-registerRealEstateModule(app);
-registerOverseasModule(app);
-registerReviewsModule(app);
-registerChatModule(app);
-registerAdminModule(app);
-registerAIModule(app);
-
-// Run core tests on startup
-runAuthTests().catch(err => console.error("Auth tests failed to start:", err));
-
 // -------------------------------------------------------------
 // SECURE DATABASE CLIENT WITH LAZY INITIALIZATION & FALLBACK
 // -------------------------------------------------------------
@@ -51,6 +37,17 @@ try {
   console.error("Prisma loading failed, using robust fallback storage. Error:", error);
   useDbFallback = true;
 }
+
+// Register all modular Authentication, Orders and Escrow APIs
+registerAuthModule(app);
+registerOrdersModule(app);
+registerWalletModule(app);
+registerRealEstateModule(app);
+registerOverseasModule(app);
+registerReviewsModule(app);
+registerChatModule(app);
+registerAdminModule(app);
+registerAIModule(app);
 
 // In-Memory Database Fallback Store for smooth local development / preview
 export const isMemoryDb = {
@@ -5136,6 +5133,8 @@ async function bootstrap() {
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`🚀 [EVERY-ZONE NODE SERVER] Running actively on port ${PORT}`);
     console.log(`📌 Dev URL accessible: http://localhost:${PORT}`);
+    // Run core tests after server boot
+    runAuthTests().catch((err) => console.error("Auth tests failed to start:", err));
   });
 }
 

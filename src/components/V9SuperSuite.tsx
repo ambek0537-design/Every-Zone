@@ -1,12 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  Rss, Tv, Search, Shuffle, FileText, Clock, Award, Users, DollarSign, 
-  ShieldAlert, UserCheck, Play, Heart, Send, Check, X, Bookmark, Plus, 
-  Trash2, ArrowRightLeft, QrCode, Download, Share2, AwardIcon, Trophy, 
-  Sparkles, TrendingUp, BarChart2, ShieldCheck, Mail, MessageSquare, PlusCircle, UserPlus, Info 
+  DollarSign, TrendingUp, Award, Users, ShieldCheck, ShieldAlert, Sliders, Globe,
+  MessageCircle, Video, Play, Sparkles, Send, Check, X, RefreshCw, BarChart2,
+  Lock, ArrowRight, UserPlus, Phone, MapPin, Search, FileText,
+  Percent, Eye, Gift, Shield, CheckCircle, Tag, Settings, Briefcase, Home,
+  CreditCard, Scale, ChevronRight, Activity, Ban, Trash2, Layers,
+  Calendar, Map, Download, Mail, QrCode, Bell, Clock, Plus, Heart, Share2, Flame, Zap
 } from 'lucide-react';
 import { AreaChart, Area, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+
+import { EcosystemMapsAndVideos } from './v3/EcosystemMapsAndVideos';
+import { B2BAdPlatform } from './v3/B2BAdPlatform';
+import { AIPremGiftAcademy } from './v3/AIPremGiftAcademy';
+import { PluginArchHub } from './v3/PluginArchHub';
+import { Phase9SuperAppSuite } from './v3/Phase9SuperAppSuite';
 
 interface V9SuperSuiteProps {
   isDarkMode: boolean;
@@ -17,6 +25,28 @@ interface V9SuperSuiteProps {
   setWalletBalance: React.Dispatch<React.SetStateAction<number>>;
 }
 
+// ----------------------------------------------------
+// DB MOCK DATA
+// ----------------------------------------------------
+const SEED_INBOX_CHATS = [
+  { id: 'ch-1', sender: 'Abebe Tibeb (Shop)', avatar: '🏪', type: 'shop', msg: 'Your Silk Habesha Dress is ready for courier hand-off.', time: '10:15 AM', unread: true },
+  { id: 'ch-2', sender: 'Bole Heights (House)', avatar: '🏠', type: 'house', msg: 'The rental agreement for Atlas Apartment is approved!', time: 'Yesterday', unread: false },
+  { id: 'ch-3', sender: 'Horizon Recruit (Jobs)', avatar: '💼', type: 'jobs', msg: 'Dubai delivery driver contract visa quota issued.', time: '2 days ago', unread: false },
+  { id: 'ch-4', sender: 'Frehiwot (Match)', avatar: '❤️', type: 'matchmaking', msg: 'I would love to join you for traditional coffee!', time: '12:44 PM', unread: true },
+  { id: 'ch-5', sender: 'Every-zone Support', avatar: '👤', type: 'support', msg: 'Escrow Dispute #2810 has been successfully resolved.', time: '3 days ago', unread: false },
+  { id: 'ch-6', sender: 'Makeda Coffee (Vendor)', avatar: '☕', type: 'vendor', msg: 'Wholesale batch prices updated for specialty Sidama.', time: 'Just now', unread: true },
+];
+
+const GLOBAL_SEARCH_POOL = [
+  { id: 'sp-1', name: 'Premium Silk Habesha Dress', category: 'Products', rate: '14,500 ETB', meta: 'Abebe Tibeb • Traditional' },
+  { id: 'sp-2', name: 'Zewditu Genuine Leather Shoes', category: 'Products', rate: '6,400 ETB', meta: 'Zewditu Leather • Bole Atlas' },
+  { id: 'sp-3', name: 'Makeda Sidama Specialty Beans', category: 'Products', rate: '750 ETB', meta: 'Makeda Coffee • Organic' },
+  { id: 'sp-4', name: 'Modern 2-Bedroom Bole Condo', category: 'Properties', rate: '65,000 ETB/mo', meta: 'Abyssinia Luxury Homes' },
+  { id: 'sp-5', name: 'Dubai Heavy Delivery Driver', category: 'Jobs', rate: '5,000 AED/mo', meta: 'Horizon Overseas Recruiting' },
+  { id: 'sp-6', name: 'Abebe Tibeb Official Store', category: 'Stores', rate: 'Verified Partner', meta: '1,240+ Sales • 4.9 Rating' },
+  { id: 'sp-7', name: 'Heritage Handloom Showcase', category: 'Videos', rate: '2.4k Views', meta: 'Live Stream Replay' },
+];
+
 export function V9SuperSuite({
   isDarkMode,
   lang,
@@ -25,1630 +55,1758 @@ export function V9SuperSuite({
   walletBalance,
   setWalletBalance
 }: V9SuperSuiteProps) {
-  const [activeTab, setActiveTab] = useState<string>('feed');
+  // ----------------------------------------------------
+  // NAVIGATION (10 Pillars)
+  // ----------------------------------------------------
+  const [activeSuiteTab, setActiveSuiteTab] = useState<
+    'profile' | 'inbox' | 'search' | 'activity' | 'feed' | 'creator' | 'reputation' | 'card' | 'community' | 'admin' | 'phase9'
+  >('profile');
 
-  // --- 1. ACTIVITY FEED STATE ---
-  const [feedPosts, setFeedPosts] = useState([
-    {
-      id: 'f-1',
-      category: 'LIVE',
-      author: 'Abeba Textiles PLC',
-      avatar: '🛍️',
-      time: 'Just Now',
-      title: '🚨 Abeba Live Shopping is Streaming!',
-      body: 'Demonstrating traditional Tibeb dresses and offering 20% discount on order matching in the next 15 minutes. Join now!',
-      likes: 42,
-      comments: 11,
-      hasLiked: false,
-      badgeColor: 'bg-red-500 text-white animate-pulse',
-      actionText: 'Watch Stream 🎥'
-    },
-    {
-      id: 'f-2',
-      category: 'NEW PRODUCT',
-      author: 'Organic Coffee Importers',
-      avatar: '☕',
-      time: '15 mins ago',
-      title: 'Yirgacheffe Grade 1 Special Roast',
-      body: 'Freshly harvested specialty green coffee from the high-altitude Gedeo zone. Full city roast profile with honey notes.',
-      price: '650 ETB / 500g',
-      likes: 128,
-      comments: 34,
-      hasLiked: false,
-      badgeColor: 'bg-emerald-500 text-white',
-      actionText: 'View Product ☕'
-    },
-    {
-      id: 'f-3',
-      category: 'FLASH SALE',
-      author: 'Zewditu Leather Crafts',
-      avatar: '👜',
-      time: '45 mins ago',
-      title: '⚡ Flash Sale: 35% OFF Luxury Purses',
-      body: 'Only 4 units left of our signature brown embossed goat leather handbag. Free delivery in Addis Ababa!',
-      price: '2,900 ETB (was 4,500 ETB)',
-      likes: 89,
-      comments: 19,
-      hasLiked: false,
-      badgeColor: 'bg-amber-500 text-zinc-950 font-black animate-bounce',
-      actionText: 'Buy Instantly ⚡'
-    },
-    {
-      id: 'f-4',
-      category: 'OVERSEAS JOB',
-      author: 'Global Agency Placement',
-      avatar: '✈️',
-      time: '2 hours ago',
-      title: 'Dubai Heavy Transport Drivers (10 Openings)',
-      body: 'Verified agency job vacancy. Generous overtime, accommodation, and round-trip airfare fully covered. Verified by Ministry of Labor.',
-      price: '3,800 AED / Month',
-      likes: 215,
-      comments: 72,
-      hasLiked: false,
-      badgeColor: 'bg-blue-600 text-white',
-      actionText: 'Apply Securely ✈️'
-    },
-    {
-      id: 'f-5',
-      category: 'NEW HOUSE',
-      author: 'Bole Premium Properties',
-      avatar: '🏡',
-      time: '4 hours ago',
-      title: '3-Bedroom Modern Condo in Bole',
-      body: 'Under 10 million! Safe Gated Community, multi-level security, backup power generator, and private balcony. Perfect for families.',
-      price: '9,400,000 ETB',
-      likes: 304,
-      comments: 98,
-      hasLiked: false,
-      badgeColor: 'bg-indigo-600 text-white',
-      actionText: 'Inspect Property 🏡'
-    },
-    {
-      id: 'f-6',
-      category: 'LOTTERY WINNER',
-      author: 'National Zone Tombola',
-      avatar: '🎟️',
-      time: '1 day ago',
-      title: '🎉 Lot #9217 Grand Prize Claimed!',
-      body: 'Congratulations to Elias M. from Hawassa who won the 100,000 ETB Wallet Balance Voucher using only a 10 ETB Zone Ticket.',
-      likes: 512,
-      comments: 145,
-      hasLiked: false,
-      badgeColor: 'bg-purple-600 text-white',
-      actionText: 'View Winners Hub 🏆'
-    },
-    {
-      id: 'f-7',
-      category: 'MATCH RECOMMENDATION',
-      author: 'Zone AI Matchmaking',
-      avatar: '❤️',
-      time: '1 day ago',
-      title: '✨ Daily Cognitive Compatibility Match',
-      body: 'Our AI has identified 3 verified profiles in Addis Ababa sharing high cultural alignment and professional goals with your profile.',
-      likes: 74,
-      comments: 8,
-      hasLiked: false,
-      badgeColor: 'bg-pink-500 text-white',
-      actionText: 'Explore Matches ❤️'
-    }
-  ]);
+  // v3.0 ECOSYSTEM STATES
+  const [selectedCountry, setSelectedCountry] = useState<'ET' | 'KE' | 'UG' | 'RW' | 'TZ'>('ET');
+  const [isPremiumUser, setIsPremiumUser] = useState<boolean>(false);
 
-  const handleLikePost = (postId: string) => {
-    setFeedPosts(prev => prev.map(p => {
-      if (p.id === postId) {
-        return {
-          ...p,
-          likes: p.hasLiked ? p.likes - 1 : p.likes + 1,
-          hasLiked: !p.hasLiked
-        };
-      }
-      return p;
-    }));
-  };
-
-  // --- 2. VENDOR LIVE SHOPPING STATE ---
-  const [liveLikes, setLiveLikes] = useState(1402);
-  const [isLikingLive, setIsLikingLive] = useState(false);
-  const [liveComments, setLiveComments] = useState([
-    { id: 1, user: 'Kidus_A', text: 'Does it come in Dark Blue? 🙏' },
-    { id: 2, user: 'Selam_T', text: 'Is shipping free in Bole area?' },
-    { id: 3, user: 'Dr_Elias', text: 'Quality looks premium! ordering now' },
-    { id: 4, user: 'Tsige_H', text: 'Can I pay with Telebirr? 💳' }
-  ]);
-  const [newLiveComment, setNewLiveComment] = useState('');
-  const [askQuestionText, setAskQuestionText] = useState('');
-  const [activeQuestion, setActiveQuestion] = useState<string | null>(
-    'How long is the local warranty on the stitching?'
-  );
-
-  const handleSendLiveComment = () => {
-    if (!newLiveComment.trim()) return;
-    setLiveComments(prev => [...prev, { id: Date.now(), user: 'You_Verified', text: newLiveComment }]);
-    setNewLiveComment('');
-  };
-
-  const handleAskQuestion = () => {
-    if (!askQuestionText.trim()) return;
-    setActiveQuestion(askQuestionText);
-    setAskQuestionText('');
-    triggerPushNotification(
-      '🎙️ Question Broadcasted',
-      'Your question has been highlighted to the Vendor Host!',
-      '🎙️',
-      'live'
-    );
-  };
-
-  const handleLikeLive = () => {
-    setLiveLikes(prev => prev + 1);
-    setIsLikingLive(true);
-    setTimeout(() => setIsLikingLive(false), 200);
-  };
-
-  // --- 3. SAVED SEARCH STATE ---
-  const [savedSearches, setSavedSearches] = useState<{ id: string; term: string; date: string; category: string }[]>(() => {
-    const saved = localStorage.getItem('ez_saved_searches');
-    return saved ? JSON.parse(saved) : [
-      { id: 's-1', term: 'Dubai Driver Jobs', date: 'Jul 2, 2026', category: 'JOBS' },
-      { id: 's-2', term: 'Bole House under 10 million', date: 'Jul 3, 2026', category: 'HOUSES' },
-      { id: 's-3', term: 'Grade-A Refurbished iPhone', date: 'Jul 4, 2026', category: 'PRODUCTS' }
-    ];
-  });
-  const [newSearchTerm, setNewSearchTerm] = useState('');
-
-  const saveSearchItem = () => {
-    if (!newSearchTerm.trim()) return;
-    const item = {
-      id: `s-${Date.now()}`,
-      term: newSearchTerm,
-      date: 'Today',
-      category: 'GENERAL'
-    };
-    const updated = [...savedSearches, item];
-    setSavedSearches(updated);
-    localStorage.setItem('ez_saved_searches', JSON.stringify(updated));
-    setNewSearchTerm('');
-    triggerPushNotification('🔍 Search Saved', `Successfully subscribed to alerts for "${item.term}"`, '🔍', 'search');
-  };
-
-  const deleteSavedSearch = (id: string) => {
-    const updated = savedSearches.filter(s => s.id !== id);
-    setSavedSearches(updated);
-    localStorage.setItem('ez_saved_searches', JSON.stringify(updated));
-  };
-
-  const triggerSimulatedMatch = (term: string) => {
-    triggerPushNotification(
-      '🔥 NEW ALERT MATCH!',
-      `AI Found a new entry matching your saved search "${term}": "Dubai Logistics Heavy Trucker Visa Package" available now!`,
-      '💼',
-      'alert'
-    );
-  };
-
-  // --- 4. SMART COMPARE STATE ---
-  const [compareCategory, setCompareCategory] = useState<'PRODUCT' | 'HOUSE' | 'JOB'>('PRODUCT');
-  const [compareItems, setCompareItems] = useState({
-    itemA: '0',
-    itemB: '1'
+  // 1. UNIVERSAL PROFILE STATE
+  const [activeRole, setActiveRole] = useState<'customer' | 'vendor' | 'agent' | 'courier'>('customer');
+  const [userMetadata, setUserMetadata] = useState({
+    name: 'Henok Tadesse',
+    phone: '+251 911 004 812',
+    faydaId: 'FYD-HENOK-ETH-2026',
+    email: 'henok.tadesse@everyzone.et',
   });
 
-  const productOptions = [
-    { id: '0', name: 'Refurbished iPhone 13 Pro', price: '44,500 ETB', spec1: '128GB Storage', spec2: 'A15 Bionic CPU', spec3: 'Grade A Refurbished', spec4: '6 Months Warranty' },
-    { id: '1', name: 'New Xiaomi Redmi Note 13', price: '29,800 ETB', spec1: '256GB Storage', spec2: 'Snapdragon CPU', spec3: 'Brand New Boxed', spec4: '1 Year Warranty' },
-    { id: '2', name: 'Samsung S22 Ultra (Used)', price: '58,000 ETB', spec1: '256GB Storage', spec2: 'Exynos CPU', spec3: 'Slight Scratches', spec4: '3 Months Warranty' }
-  ];
-
-  const houseOptions = [
-    { id: '0', name: 'Deluxe Bole Villa', price: '9,400,000 ETB', spec1: 'Bole Gated Zone', spec2: '3 Bedrooms, 2 Bath', spec3: 'Brand New Built', spec4: 'Backup Generator, Security Guard' },
-    { id: '1', name: 'CMC Luxury Apartment', price: '7,800,000 ETB', spec1: 'CMC Condominium', spec2: '2 Bedrooms, 2 Bath', spec3: 'Fully Finished Interior', spec4: 'Dedicated Parking Slot' },
-    { id: '2', name: 'Old Airport Cozy Villa', price: '12,500,000 ETB', spec1: 'Old Airport Area', spec2: '4 Bedrooms, 3 Bath', spec3: 'Spacious Front Yard', spec4: 'Servants Quarter Annex' }
-  ];
-
-  const jobOptions = [
-    { id: '0', name: 'Dubai Heavy Truck Driver', price: '3,800 AED / mo', spec1: 'Heavy Vehicle License', spec2: 'Accommodation Provided', spec3: 'Agency Visa & Airfare paid', spec4: 'Renewable 2-Year Contract' },
-    { id: '1', name: 'Saudi Hospitality Staff', price: '2,500 SAR / mo', spec1: 'Basic English required', spec2: 'Shared Lodging & Meal Plan', spec3: 'Agency placement certified', spec4: 'Single-entry seasonal contract' },
-    { id: '2', name: 'Qatar Warehousing Assistant', price: '2,200 QAR / mo', spec1: 'No experience needed', spec2: 'Health insurance included', spec3: 'Overtime hours multiplier', spec4: 'Immediate agency deployment' }
-  ];
-
-  // --- 5. DIGITAL RECEIPTS STATE ---
-  const [selectedReceipt, setSelectedReceipt] = useState({
-    invoiceNo: 'EZ-INV-2026-904',
-    date: 'July 4, 2026',
-    customerName: 'Abdi Elias',
-    items: [
-      { name: 'Habesha Luxury Makeda Dress', qty: 1, price: 4200 },
-      { name: 'Yirgacheffe Specialty Coffee Beans (1kg)', qty: 1, price: 1100 }
+  // 2. UNIVERSAL INBOX STATE
+  const [inboxFilter, setInboxFilter] = useState<'all' | 'shop' | 'house' | 'jobs' | 'matchmaking' | 'support' | 'vendor'>('all');
+  const [selectedChatId, setSelectedChatId] = useState<string>('ch-1');
+  const [typedMessage, setTypedMessage] = useState('');
+  const [chatsList, setChatsList] = useState(SEED_INBOX_CHATS);
+  const [chatThread, setChatThread] = useState<Record<string, { sender: 'user' | 'them', text: string, time: string }[]>>({
+    'ch-1': [
+      { sender: 'them', text: 'ሰላም Henok, your traditional silk embroidery details are finalized.', time: '10:00 AM' },
+      { sender: 'user', text: 'Fantastic! Has it been verified on the escrow ledger yet?', time: '10:05 AM' },
+      { sender: 'them', text: 'Yes, escrow deposit is secured. We are handing over to Sheger Courier today.', time: '10:15 AM' }
     ],
-    subtotal: 5300,
-    escrowFee: 50,
-    pointsAccrued: 53,
-    total: 5350,
-    paymentMode: 'Telebirr Escrow Secure',
-    qrCodeValue: 'https://every-zone.com/verify/invoice/EZ-INV-2026-904',
-    isVerified: true
+    'ch-4': [
+      { sender: 'them', text: 'Hello! I saw your matchmaking profile and matching values.', time: '12:30 PM' },
+      { sender: 'user', text: 'Hello Frehiwot! Nice to connect with you.', time: '12:40 PM' },
+      { sender: 'them', text: 'I would love to join you for traditional coffee!', time: '12:44 PM' }
+    ]
   });
 
-  const handleDownloadInvoice = () => {
-    alert(`📥 [PDF EXPORT HANDSHAKE]\n\nDownloading ${selectedReceipt.invoiceNo}.pdf to local filesystem. Format signed by Ethio-Telecom Cryptographic Signatures.`);
-    triggerPushNotification('🧾 Invoice Downloaded', `Digital Receipt ${selectedReceipt.invoiceNo} successfully saved.`, '🧾', 'invoice');
-  };
+  // 3. UNIVERSAL SEARCH STATE
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchCategory, setSearchCategory] = useState<string>('All');
 
-  const handleShareInvoice = () => {
-    alert(`📤 Generating Secure Quick-Share Telegram Gateway Link:\n\n"Check my verified receipt of ${selectedReceipt.total} ETB on Every-zone!"`);
-  };
-
-  // --- 6. RECENTLY VIEWED STATE ---
-  const [recentlyViewed, setRecentlyViewed] = useState([
-    { id: 'rv-1', category: 'PRODUCT', title: 'Refurbished Grade A iPhone 13 Pro', price: '44,500 ETB', store: 'Kidus Gadgets' },
-    { id: 'rv-2', category: 'HOUSE', title: 'Deluxe Bole Modern Villa', price: '9,400,000 ETB', store: 'Bole Homes' },
-    { id: 'rv-3', category: 'JOB', title: 'Dubai Professional Truck Driver vacancy', price: '3,800 AED / Mo', store: 'Express Agencies' },
-    { id: 'rv-4', category: 'SERVICE', title: 'Ethiopian Passport Fast-Track Consultation', price: '4,500 ETB', store: 'Passport Bureau Agent' }
+  // 4. ACTIVITY CENTER STATE
+  const [activityCategory, setActivityCategory] = useState<'all' | 'orders' | 'payments' | 'followers' | 'matches'>('all');
+  const [activitiesList, setActivitiesList] = useState([
+    { id: 'act-1', type: 'orders', title: 'Order EZ-9810 Shipped', desc: 'Handed to Sheger Express. Live map route activated.', time: '10 mins ago', unread: true },
+    { id: 'act-2', type: 'payments', title: 'Escrow Revenue Payout', desc: '14,500 ETB successfully settled to Chapa wallet.', time: '1 hour ago', unread: false },
+    { id: 'act-3', type: 'followers', title: 'New Customer Gained', desc: 'Saron Kassa followed your Sidama Coffee store page.', time: '3 hours ago', unread: true },
+    { id: 'act-4', type: 'matches', title: 'High Compatibility Match!', desc: 'Computed 94% lifestyle match with Frehiwot (Nurse, 28).', time: '4 hours ago', unread: true },
+    { id: 'act-5', type: 'orders', title: 'Dispute Resolved', desc: 'Arbitration resolved dispute in favor of escrow holding.', time: '1 day ago', unread: false },
   ]);
 
-  const clearRecentlyViewed = () => {
-    setRecentlyViewed([]);
-  };
+  // 5. SMART FEED STATE
+  const [smartFeedPosts, setSmartFeedPosts] = useState([
+    { id: 'f-1', author: 'Makeda Royal Coffee', avatar: '☕', content: 'Our Sidama washing station is active! Hand-sorted premium single-origin micro-lots back in inventory. Verified organic certified.', media: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?q=80&w=600&auto=format&fit=crop', likes: 142, liked: false, comments: [{ author: 'Henok', text: 'Order secured! Smells beautiful.' }] },
+    { id: 'f-2', author: 'Abebe Handlooms', avatar: '👗', content: 'Crafting the classic Gold Tibeb fringe pattern. Handcrafted over 12 days in Bole district. Limited v2.0 Enterprise collection.', media: 'https://images.unsplash.com/photo-1582562124811-c09040d0a901?q=80&w=600&auto=format&fit=crop', likes: 98, liked: false, comments: [] }
+  ]);
+  const [newCommentInput, setNewCommentInput] = useState<Record<string, string>>({});
+  const [newPostText, setNewPostText] = useState('');
+  const [newPostUrl, setNewPostUrl] = useState('');
 
-  // --- 7. LOYALTY & REWARDS STATE ---
-  const [loyaltyPoints, setLoyaltyPoints] = useState(() => {
-    const saved = localStorage.getItem('ez_loyalty_points');
-    return saved ? parseInt(saved, 10) : 345;
+  // 6. CREATOR MODE STATE
+  const [isLiveStreaming, setIsLiveStreaming] = useState(false);
+  const [liveViewers, setLiveViewers] = useState(0);
+  const [liveChat, setLiveChat] = useState<{ author: string; text: string }[]>([]);
+  const [creatorRevenue, setCreatorRevenue] = useState(12450);
+
+  // 7. REPUTATION STATE
+  const [reputationScore, setReputationScore] = useState(94);
+  const [isFaydaBiometricsVerified, setIsFaydaBiometricsVerified] = useState(false);
+
+  // 8. DIGITAL BUSINESS CARD STATE
+  const [cardTheme, setCardTheme] = useState<'amber' | 'emerald' | 'teal' | 'rose'>('amber');
+  const [cardSlogan, setCardSlogan] = useState('Premium Ethiopian Crafts & High-Fidelity Logistics');
+
+  // 9. COMMUNITY STATE
+  const [selectedCommunity, setSelectedCommunity] = useState<'guild' | 'club' | 'houses' | 'jobs'>('guild');
+  const [groupMessages, setGroupMessages] = useState<Record<string, { author: string; text: string; time: string }[]>>({
+    guild: [
+      { author: 'Zewditu Leather', text: 'Any merchant experiencing Chapa gateway delays today?', time: '09:12 AM' },
+      { author: 'Abebe Tibeb', text: 'All clearing smoothly on our end. Escrow clearance completed.', time: '09:15 AM' }
+    ],
+    club: [
+      { author: 'Aster', text: 'Got my Habesha dress today! The WebP image loading in the gallery was spot on.', time: '11:00 AM' }
+    ],
+    houses: [
+      { author: 'Yonas Agent', text: 'New Bole modern loft coming online tomorrow. Escrow deposit accepted.', time: 'Yesterday' }
+    ],
+    jobs: [
+      { author: 'Brook', text: 'Highly recommend getting the Fayda certificate for the Dubai courier contracts.', time: '2 days ago' }
+    ]
   });
+  const [typedGroupMsg, setTypedGroupMsg] = useState('');
 
-  const getMembershipLevel = (pts: number) => {
-    if (pts >= 1000) return { title: '💎 Platinum Elite', color: 'text-cyan-400 border-cyan-400/30 bg-cyan-400/5', discount: '5% Checkout CashBack' };
-    if (pts >= 500) return { title: '🥇 Gold Benefactor', color: 'text-yellow-400 border-yellow-400/30 bg-yellow-400/5', discount: '3% Checkout CashBack' };
-    if (pts >= 200) return { title: '🥈 Silver Supporter', color: 'text-stone-300 border-stone-300/30 bg-stone-300/5', discount: '1.5% Checkout CashBack' };
-    return { title: '🥉 Bronze Member', color: 'text-amber-600 border-amber-600/30 bg-amber-600/5', discount: 'Standard rewards access' };
-  };
-
-  const membership = getMembershipLevel(loyaltyPoints);
-
-  const claimLoyaltyReward = (ptsCost: number, rewardTitle: string) => {
-    if (loyaltyPoints < ptsCost) {
-      alert('⚠️ Insufficient loyalty points for this redemption!');
-      return;
-    }
-    setLoyaltyPoints(prev => {
-      const next = prev - ptsCost;
-      localStorage.setItem('ez_loyalty_points', next.toString());
-      return next;
-    });
-    alert(`🎉 Successfully redeemed reward: ${rewardTitle}! Applied voucher directly to checkout checkout.`);
-    triggerPushNotification('🎁 Reward Redeemed!', `You successfully redeemed "${rewardTitle}" for ${ptsCost} points!`, '🎁', 'rewards');
-  };
-
-  // --- 8. REFERRAL SYSTEM HUB ---
-  const [referralCode, setReferralCode] = useState('ZONE-ABI-8422');
-  const [referrals, setReferrals] = useState([
-    { name: 'Kidus Solomon', date: 'Jul 1, 2026', commission: '150 ETB', status: 'PAID' },
-    { name: 'Selam Hailu', date: 'Jul 3, 2026', commission: '250 ETB', status: 'PAID' },
-    { name: 'Yosef Alemu', date: 'Jul 4, 2026', commission: '0 ETB', status: 'PENDING' }
+  // 10. ENTERPRISE ADMIN STATE
+  const [flaggedUsers, setFlaggedUsers] = useState([
+    { id: 'usr-441', name: 'Suspect Store LLC', reason: 'High dispute rate (>12%)', frozen: false, status: 'Review Needed' },
+    { id: 'usr-992', name: 'Mulugeta Alarms', reason: 'Velocity check velocity peak', frozen: true, status: 'Frozen' }
   ]);
-  const [leaderboard, setLeaderboard] = useState([
-    { rank: 1, name: 'Elias_M', referrals: 412, earning: '41,200 ETB' },
-    { rank: 2, name: 'Saba_H', referrals: 304, earning: '30,400 ETB' },
-    { rank: 3, name: 'Dr_Daniel', referrals: 189, earning: '18,900 ETB' },
-    { rank: 4, name: 'You_Verified', referrals: 45, earning: '4,500 ETB' }
+  const [apiLogs, setApiLogs] = useState([
+    { time: '10:14:02', node: 'CHAPA_PAY', status: 200, latency: '142ms' },
+    { time: '10:14:15', node: 'GEMINI_REASON_FLASH', status: 200, latency: '480ms' },
+    { time: '10:14:22', node: 'MAPS_ROUTING_NODE', status: 200, latency: '82ms' }
   ]);
 
-  const triggerSimulatedInvite = () => {
-    const names = ['Henok T.', 'Meron A.', 'Tewodros B.', 'Helen G.'];
-    const randomName = names[Math.floor(Math.random() * names.length)];
-    const newRef = { name: randomName, date: 'Today', commission: '100 ETB', status: 'PENDING' };
-    setReferrals(prev => [newRef, ...prev]);
-    setLoyaltyPoints(prev => prev + 25);
-    alert(`👥 [SIMULATION SUCCESS]\n\nYour friend ${randomName} signed up using your link! You earned 100 ETB pending commission and +25 Loyalty points.`);
-    triggerPushNotification('👥 New Referral Joined!', `${randomName} is now active on Every-zone using your code.`, '👥', 'referral');
-  };
+  // ----------------------------------------------------
+  // INTERACTIVE REPLIES & DISPATCHES
+  // ----------------------------------------------------
+  const handleSendMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!typedMessage.trim()) return;
 
-  // --- 9. AI PRICE SUGGESTION TOOL (For Vendors) ---
-  const [suggestName, setSuggestName] = useState('Habesha Kemis Tibeb');
-  const [suggestCategory, setSuggestCategory] = useState('Handicrafts');
-  const [suggestResults, setSuggestResults] = useState<{
-    price: string;
-    demand: string;
-    competition: string;
-    bestCat: string;
-  } | null>(null);
-  const [suggestLoading, setSuggestLoading] = useState(false);
+    const currentChat = chatsList.find(c => c.id === selectedChatId);
+    if (!currentChat) return;
 
-  const calculateAiPricing = () => {
-    setSuggestLoading(true);
+    const newMessage = { sender: 'user' as const, text: typedMessage, time: 'Just now' };
+    setChatThread(prev => ({
+      ...prev,
+      [selectedChatId]: [...(prev[selectedChatId] || []), newMessage]
+    }));
+    
+    const textSent = typedMessage;
+    setTypedMessage('');
+
+    // Mark as read
+    setChatsList(prev => prev.map(c => c.id === selectedChatId ? { ...c, unread: false, msg: textSent } : c));
+
+    // Simulated Intelligent Reply
     setTimeout(() => {
-      setSuggestLoading(false);
-      const hash = suggestName.length % 3;
-      if (hash === 0) {
-        setSuggestResults({
-          price: '4,200 ETB - 4,800 ETB',
-          demand: 'HIGH (88/100) - Holiday Season',
-          competition: 'MEDIUM (60/100) - High variety competitors',
-          bestCat: 'Traditional Apparel / Tibeb Dresses'
-        });
-      } else if (hash === 1) {
-        setSuggestResults({
-          price: '1,200 ETB - 1,500 ETB',
-          demand: 'MEDIUM (54/100)',
-          competition: 'HIGH (85/100)',
-          bestCat: 'Packaged Organic Spices & Teas'
-        });
-      } else {
-        setSuggestResults({
-          price: '800 ETB - 1,100 ETB',
-          demand: 'VERY HIGH (94/100)',
-          competition: 'LOW (25/100) - Scarce raw supply',
-          bestCat: 'Premium Specialty Coffee / Gedeo Zone'
-        });
+      let replyText = `🤖 [Every-zone AI Support Agent] I registered your note regarding "${currentChat.sender}". Proceeding with automatic escrow verification.`;
+      if (currentChat.type === 'shop') {
+        replyText = `🏪 [Abebe Tibeb Shop] We acknowledged your request "${textSent}". Your courier tracking is actively monitored.`;
+      } else if (currentChat.type === 'matchmaking') {
+        replyText = `❤️ [Frehiwot] That sounds perfect Henok! Shall we reserve a table at the Bole Cultural Café this Friday around 5:30 PM?`;
+      } else if (currentChat.type === 'house') {
+        replyText = `🏠 [Bole Rent Node] Our agent has pinned your lease contract. Safe deposits are secured.`;
+      } else if (currentChat.type === 'jobs') {
+        replyText = `💼 [Horizon Placements] Your passport was matched on our database. Work permit generation will begin.`;
       }
-    }, 800);
+      
+      setChatThread(prev => ({
+        ...prev,
+        [selectedChatId]: [...(prev[selectedChatId] || []), { sender: 'them', text: replyText, time: 'Just now' }]
+      }));
+      setChatsList(prev => prev.map(c => c.id === selectedChatId ? { ...c, msg: replyText } : c));
+      triggerPushNotification('New Reply Received', replyText.substring(0, 50) + '...', '💬', 'inbox');
+    }, 1500);
   };
 
-  // --- 10. AI FRAUD DETECTION DASHBOARD ---
-  const [fraudScans, setFraudScans] = useState([
-    { id: 'sc-1', type: 'SPAM REVIEW', target: 'Xiaomi Redmi Note 13', severity: 'HIGH', action: 'FLAGGED & INVISIBLE', message: 'Identified identical text patterns block across 5 accounts from identical IP pool.' },
-    { id: 'sc-2', type: 'DUPLICATE ACC', target: 'User_Yosef_818', severity: 'MEDIUM', action: 'UNDER COGNITIVE AUDIT', message: 'Shared national ID hash matching deactivated fraudulent credential database.' },
-    { id: 'sc-3', type: 'FAKE SALE', target: 'Grade-A 100 ETB Flash item', severity: 'LOW', action: 'RESOLVED - GENUINE', message: 'Abnormal low price checked against vendor escrow holding. Fully collateralized.' }
-  ]);
+  // Live stream commenters simulation
+  useEffect(() => {
+    let interval: any;
+    if (isLiveStreaming) {
+      const simulatedChatComments = [
+        "Is that the authentic leather jacket?",
+        "Beautiful Sidama beans showing on camera!",
+        "Sent you a Rose gift! 🌹",
+        "Does the escrow handle Telebirr payouts?",
+        "Sending love from Addis! ❤️",
+        "Sent you a Golden Lion! 🦁",
+        "How can I book an appointment with Solomon?",
+      ];
+      setLiveViewers(148);
+      interval = setInterval(() => {
+        setLiveViewers(prev => prev + Math.floor(Math.random() * 9) - 4);
+        const randomComment = simulatedChatComments[Math.floor(Math.random() * simulatedChatComments.length)];
+        const randomUser = ['Aster', 'Yonas', 'Saron', 'Kidus', 'Almaz', 'Brook'][Math.floor(Math.random() * 6)];
+        
+        // Auto credit balance if tipping detected
+        if (randomComment.includes("🌹")) {
+          setWalletBalance(b => b + 50);
+          setCreatorRevenue(r => r + 50);
+          triggerPushNotification('Viewer Tip received!', `${randomUser} gifted you a Rose (+50 ETB)`, '🌹', 'creator');
+        } else if (randomComment.includes("🦁")) {
+          setWalletBalance(b => b + 500);
+          setCreatorRevenue(r => r + 500);
+          triggerPushNotification('BIG GIFT ALERT!', `${randomUser} gifted you a Golden Lion (+500 ETB)`, '🦁', 'creator');
+        }
 
-  const runActiveFraudSweep = () => {
-    triggerPushNotification(
-      '🤖 AI Fraud Guard Scan',
-      'Scanning cognitive indices, review pools, and escrow logs for non-authentic behavior...',
-      '🤖',
-      'fraud'
-    );
-    alert('🤖 [AI Cognitive Fraud Scan Launched]\n\nZero duplicates found in active memory cache. All current reviews score >0.92 on the authenticity confidence index.');
-  };
+        setLiveChat(prev => [...prev.slice(-12), { author: randomUser, text: randomComment }]);
+      }, 2500);
+    } else {
+      setLiveViewers(0);
+      setLiveChat([]);
+    }
+    return () => clearInterval(interval);
+  }, [isLiveStreaming]);
 
-  // --- 11. MINI CRM FOR VENDORS ---
-  const [crmCustomers, setCrmCustomers] = useState([
-    { id: 'c-1', name: 'Selamawit Tekle', vip: true, orders: 12, notes: 'Prefers red accent Tibeb borders, quick direct payout', birthday: 'July 18 (Sends Discount Voucher)', totalSpent: '54,200 ETB' },
-    { id: 'c-2', name: 'Kidus Solomon', vip: false, orders: 4, notes: 'Requires fast delivery in CMC area, usually pays cash escrow', birthday: 'Oct 12', totalSpent: '12,400 ETB' },
-    { id: 'c-3', name: 'Tsige Haile', vip: true, orders: 8, notes: 'Enthusiastic leather product collector, responds well to VIP deals', birthday: 'July 6 (Birthday Soon!)', totalSpent: '31,500 ETB' }
-  ]);
-  const [newCrmNotes, setNewCrmNotes] = useState<{ [key: string]: string }>({});
-
-  const handleUpdateCrmNotes = (id: string, text: string) => {
-    setNewCrmNotes(prev => ({ ...prev, [id]: text }));
-  };
-
-  const saveCrmNotes = (id: string) => {
-    const text = newCrmNotes[id];
-    if (text === undefined) return;
-    setCrmCustomers(prev => prev.map(c => c.id === id ? { ...c, notes: text } : c));
-    alert('📝 Customer notes updated successfully in Mini-CRM cache.');
-  };
-
-  // --- 12. VENDOR SUBSCRIPTION TIERS ---
-  const [activeVendorSub, setActiveVendorSub] = useState<'FREE' | 'STARTER' | 'PROFESSIONAL' | 'ENTERPRISE'>('FREE');
-
-  const vendorPlans = [
-    { name: 'FREE', price: '0 ETB', fee: '5%', live: 'No Live Shopping', support: 'Standard Helpdesk', badge: 'bg-stone-500/20 text-stone-400' },
-    { name: 'STARTER', price: '450 ETB/mo', fee: '2.5%', live: 'Audio live streams', support: '24h Ticketing', badge: 'bg-blue-500/20 text-blue-400' },
-    { name: 'PROFESSIONAL', price: '1,200 ETB/mo', fee: '1.2%', live: 'Full Video Live Shopping + QA', support: 'Priority Instant Escrow Support', badge: 'bg-amber-500/20 text-amber-500' },
-    { name: 'ENTERPRISE', price: '3,500 ETB/mo', fee: '0.5%', live: 'Dedicated studio stream + multi-host', support: 'Personal CRM and Escrow Audit Agent', badge: 'bg-purple-500/20 text-purple-400' }
-  ];
-
-  // --- 13. USER VERIFICATION TIERS ---
-  const [activeUserVerif, setActiveUserVerif] = useState<'BASIC' | 'VERIFIED' | 'PREMIUM' | 'ELITE'>('BASIC');
-
-  const verificationLevels = [
-    { name: 'BASIC', req: 'Email & Phone Number', perks: 'Buy products, standard service access', badge: 'bg-stone-500 text-stone-100' },
-    { name: 'VERIFIED', req: 'Fayda National ID Scan', perks: 'Escrow payment active, buy land/houses, lottery participation', badge: 'bg-green-600 text-white' },
-    { name: 'PREMIUM', req: 'Fayda + Bank biometric link', perks: 'Instant 15,000 ETB overdraft wallet, priority dispatch courier', badge: 'bg-amber-500 text-zinc-950 font-black' },
-    { name: 'ELITE', req: 'Verified Enterprise registration', perks: 'Zero fee direct settlements, customized passport bureau priority', badge: 'bg-purple-600 text-white' }
-  ];
+  // Handle smart search filtration
+  const filteredSearchItems = useMemo(() => {
+    return GLOBAL_SEARCH_POOL.filter(item => {
+      const matchesCat = searchCategory === 'All' || item.category === searchCategory;
+      const matchesText = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          item.meta.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesCat && matchesText;
+    });
+  }, [searchQuery, searchCategory]);
 
   return (
-    <div className={`w-full rounded-3xl border shadow-xl flex flex-col overflow-hidden ${
-      isDarkMode ? 'bg-zinc-950 border-zinc-850 text-zinc-100' : 'bg-stone-50 border-stone-200 text-stone-900'
-    }`}>
-      {/* Title block */}
-      <div className="p-4 border-b border-stone-200/50 dark:border-zinc-900/50 flex justify-between items-center bg-stone-100/40 dark:bg-zinc-900/40">
-        <div className="flex items-center gap-2">
-          <span className="text-xl">🌟</span>
-          <div className="text-left">
-            <h2 className="text-sm font-black uppercase tracking-wider font-sans text-amber-500 flex items-center gap-1.5">
-              Every-Zone Suite V9
-            </h2>
-            <p className="text-[9px] opacity-65 font-mono">13 Unified Cognitive Features Active</p>
+    <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md overflow-hidden ${
+      isDarkMode ? 'bg-black/85' : 'bg-stone-900/60'
+    }`} id="v9-super-suite-backdrop">
+      <div className={`relative w-full max-w-6xl h-[90vh] rounded-3xl flex flex-col border overflow-hidden shadow-2xl transition-all duration-300 ${
+        isDarkMode ? 'bg-[#0a0a0a] border-zinc-850 text-stone-200' : 'bg-stone-50 border-stone-200 text-stone-900'
+      }`}>
+        
+        {/* TOP HUB METADATA HEADER */}
+        <div className={`px-6 py-4 border-b flex items-center justify-between ${
+          isDarkMode ? 'bg-zinc-950/80 border-zinc-900' : 'bg-stone-100 border-stone-200'
+        }`}>
+          <div className="flex items-center gap-3 text-left">
+            <div className="bg-amber-500 text-stone-950 p-2 rounded-2xl shadow-lg shadow-amber-500/20">
+              <Sparkles size={18} className="animate-pulse" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black uppercase tracking-wider text-amber-500 font-mono">EVERY-ZONE v3.0</span>
+                <span className="bg-amber-500/10 text-amber-400 text-[9px] font-bold px-2 py-0.5 rounded-full border border-amber-500/20 font-mono">WORLD CLASS SUPER APP</span>
+                {isPremiumUser && (
+                  <span className="bg-gradient-to-r from-yellow-400 to-amber-500 text-stone-950 text-[8px] font-black px-2 py-0.5 rounded-full animate-bounce">★ PLUS VIP</span>
+                )}
+              </div>
+              <div className="flex flex-wrap items-center gap-2 mt-1">
+                <h2 className="text-xs md:text-sm font-extrabold uppercase tracking-wide">
+                  {lang === 'en' ? 'Super App Suite Control Center' : 'ሱፐር አፕ ሲስተም መቆጣጠሪያ ማዕከል'}
+                </h2>
+                <div className="flex gap-1 items-center bg-black/40 border border-zinc-800 rounded-xl p-0.5">
+                  {[
+                    { code: 'ET', flag: '🇪🇹', name: 'Ethiopia' },
+                    { code: 'KE', flag: '🇰🇪', name: 'Kenya' },
+                    { code: 'UG', flag: '🇺🇬', name: 'Uganda' },
+                    { code: 'RW', flag: '🇷🇼', name: 'Rwanda' },
+                    { code: 'TZ', flag: '🇹🇿', name: 'Tanzania' }
+                  ].map(c => (
+                    <button
+                      key={c.code}
+                      onClick={() => {
+                        setSelectedCountry(c.code as any);
+                        triggerPushNotification(
+                          'Country Context Switched',
+                          `Every-zone ecosystem aligned to ${c.name} (Currency, maps, and local micro-commerce updated!)`,
+                          c.flag,
+                          'profile'
+                        );
+                      }}
+                      className={`text-xs px-1.5 py-0.5 rounded transition ${
+                        selectedCountry === c.code 
+                          ? 'bg-amber-500 text-stone-950 scale-110 font-black' 
+                          : 'opacity-50 hover:opacity-100 hover:bg-zinc-800 text-stone-300'
+                      }`}
+                      title={c.name}
+                    >
+                      {c.flag} <span className="text-[8px] font-mono font-bold">{c.code}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
+            {/* Live Wallet Feed */}
+            <div className={`px-4 py-1.5 rounded-2xl flex items-center gap-2 border font-mono text-xs ${
+              isDarkMode ? 'bg-zinc-900/50 border-zinc-850' : 'bg-stone-200/50 border-stone-300'
+            }`}>
+              <DollarSign size={13} className="text-amber-500" />
+              <span>{walletBalance.toLocaleString()} ETB</span>
+            </div>
+
+            <button 
+              onClick={onClose}
+              className="p-1.5 rounded-full hover:bg-red-500/10 hover:text-red-400 transition"
+              title="Close System Overlay"
+            >
+              <X size={18} />
+            </button>
           </div>
         </div>
-        <button
-          onClick={onClose}
-          className="p-1.5 rounded-full hover:bg-stone-200 dark:hover:bg-zinc-800 transition text-stone-500 dark:text-zinc-400"
-        >
-          <X size={16} />
-        </button>
-      </div>
 
-      {/* Grid of sub-tabs */}
-      <div className="flex flex-wrap border-b border-stone-200/50 dark:border-zinc-900/50 p-2 gap-1 bg-stone-100/10 dark:bg-zinc-950/20">
-        {[
-          { id: 'feed', icon: <Rss size={11} />, label: 'Activity Feed' },
-          { id: 'live', icon: <Tv size={11} />, label: 'Vendor Live 🔴' },
-          { id: 'saved', icon: <Search size={11} />, label: 'Saved Searches' },
-          { id: 'compare', icon: <Shuffle size={11} />, label: 'Smart Compare' },
-          { id: 'receipts', icon: <FileText size={11} />, label: 'Digital Receipts' },
-          { id: 'recently', icon: <Clock size={11} />, label: 'Recently Viewed' },
-          { id: 'loyalty', icon: <Award size={11} />, label: 'Loyalty & Levels' },
-          { id: 'referral', icon: <Users size={11} />, label: 'Referrals Hub' },
-          { id: 'pricing', icon: <DollarSign size={11} />, label: 'AI Price Predictor' },
-          { id: 'fraud', icon: <ShieldAlert size={11} />, label: 'Fraud Monitor' },
-          { id: 'crm', icon: <MessageSquare size={11} />, label: 'Mini-CRM' },
-          { id: 'billing', icon: <UserCheck size={11} />, label: 'Subs & Verification' }
-        ].map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setActiveTab(t.id)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all tracking-wider ${
-              activeTab === t.id
-                ? (isDarkMode ? 'bg-amber-500 text-zinc-950 shadow' : 'bg-[#1E3A1A] text-white shadow')
-                : (isDarkMode ? 'bg-zinc-900 text-zinc-300 hover:bg-zinc-850' : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50')
-            }`}
-          >
-            {t.icon}
-            <span>{t.label}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* TAB CONTENT AREA */}
-      <div className="p-4 flex-1 overflow-y-auto max-h-[580px]">
-        <AnimatePresence mode="wait">
-          
-          {/* 1. ACTIVITY FEED TAB */}
-          {activeTab === 'feed' && (
-            <motion.div
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="space-y-4 text-left"
+        {/* 11 PILLARS GRID SELECTION NAV */}
+        <div className={`px-6 py-2.5 border-b grid grid-cols-4 sm:grid-cols-6 md:grid-cols-11 gap-1.5 text-center overflow-x-auto scrollbar-none ${
+          isDarkMode ? 'bg-zinc-950/40 border-zinc-900' : 'bg-stone-100/50 border-stone-200'
+        }`}>
+          {[
+            { id: 'profile', icon: <Users size={14} />, label: lang === 'en' ? 'Profile' : 'ፕሮፋይል' },
+            { id: 'inbox', icon: <MessageCircle size={14} />, label: lang === 'en' ? 'Inbox' : 'መልዕክት' },
+            { id: 'search', icon: <Search size={14} />, label: lang === 'en' ? 'Search' : 'ፍለጋ' },
+            { id: 'activity', icon: <Bell size={14} />, label: lang === 'en' ? 'Activity' : 'ማሳወቂያ' },
+            { id: 'feed', icon: <Flame size={14} />, label: lang === 'en' ? 'Feed' : 'አዲስ ነገሮች' },
+            { id: 'creator', icon: <Video size={14} />, label: lang === 'en' ? 'Creator' : 'ቀጥታ ስርጭት' },
+            { id: 'reputation', icon: <Award size={14} />, label: lang === 'en' ? 'Reputed' : 'ደረጃ' },
+            { id: 'card', icon: <QrCode size={14} />, label: lang === 'en' ? 'Card' : 'ካርድ' },
+            { id: 'community', icon: <Globe size={14} />, label: lang === 'en' ? 'Community' : 'ማህበረሰብ' },
+            { id: 'admin', icon: <Sliders size={14} />, label: lang === 'en' ? 'Sys Admin' : 'አድሚን' },
+            { id: 'phase9', icon: <Sparkles size={14} />, label: lang === 'en' ? 'Phase 9 Elite' : 'ምዕራፍ 9' },
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveSuiteTab(tab.id as any)}
+              className={`py-2 px-1.5 rounded-xl transition flex flex-col items-center justify-center gap-1.5 cursor-pointer ${
+                activeSuiteTab === tab.id
+                  ? 'bg-amber-500 text-stone-950 font-black shadow shadow-amber-500/15'
+                  : isDarkMode ? 'hover:bg-zinc-900 text-stone-400 hover:text-white' : 'hover:bg-stone-200 text-stone-600 hover:text-stone-950'
+              }`}
             >
-              <div className="flex items-center justify-between border-b border-stone-200/50 dark:border-zinc-900/50 pb-2">
-                <div>
-                  <h3 className="text-xs font-black uppercase text-amber-500">📢 Global Ecosystem Feed</h3>
-                  <p className="text-[9px] opacity-60">Facebook &amp; LinkedIn style social timeline of Every-zone activities</p>
-                </div>
-                <span className="text-[9px] bg-amber-500/10 text-amber-500 px-2.5 py-1 rounded-full font-mono font-black animate-pulse">
-                  7 Active Signals
-                </span>
-              </div>
+              {tab.icon}
+              <span className="text-[9px] font-extrabold truncate w-full">{tab.label}</span>
+            </button>
+          ))}
+        </div>
 
-              {/* Status Bar */}
-              <div className={`p-3 rounded-2xl border flex items-center gap-3 ${isDarkMode ? 'bg-zinc-900/50 border-zinc-850' : 'bg-white border-stone-150'}`}>
-                <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center text-zinc-950 font-black text-xs">
-                  ME
-                </div>
-                <input 
-                  type="text" 
-                  placeholder="Share a new verified listing, review, or flash sale idea with your zone..."
-                  disabled
-                  className="flex-1 bg-stone-100/50 dark:bg-zinc-950 border border-stone-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs outline-none opacity-60 cursor-not-allowed"
-                />
-              </div>
+        {/* CORE WORKSPACE VIEWPORT */}
+        <div className="flex-1 overflow-y-auto p-6">
+          <AnimatePresence mode="wait">
+            
+            {/* ---------------------------------------------------- */}
+            {/* PILLAR 1: UNIVERSAL PROFILE */}
+            {/* ---------------------------------------------------- */}
+            {activeSuiteTab === 'profile' && (
+              <motion.div
+                key="profile"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="space-y-6"
+              >
+                <div className="flex flex-col md:flex-row gap-6 items-start">
+                  {/* Persona Identity Badge */}
+                  <div className={`p-6 rounded-3xl w-full md:w-1/3 flex flex-col items-center text-center relative overflow-hidden border ${
+                    isDarkMode ? 'bg-gradient-to-b from-zinc-900 to-zinc-950 border-zinc-850' : 'bg-white border-stone-200'
+                  }`}>
+                    <div className="absolute top-0 right-0 p-3 bg-emerald-500/10 text-emerald-400 text-[9px] font-bold uppercase rounded-bl-2xl font-mono border-l border-b border-emerald-500/20">
+                      🟢 Active Client
+                    </div>
+                    
+                    <div className="w-18 h-18 bg-amber-500 rounded-full flex items-center justify-center text-3xl font-black text-stone-950 shadow-xl shadow-amber-500/20 mb-4">
+                      {userMetadata.name.split(' ')[0][0]}
+                    </div>
 
-              {/* Posts Timeline */}
-              <div className="space-y-3.5">
-                {feedPosts.map((post) => (
-                  <div 
-                    key={post.id}
-                    className={`p-4 rounded-3xl border space-y-3 transition-all hover:scale-[1.005] ${
-                      isDarkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-stone-200'
-                    }`}
-                  >
-                    {/* Header */}
-                    <div className="flex justify-between items-start">
-                      <div className="flex items-center gap-2.5">
-                        <span className="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-500/20 flex items-center justify-center text-base">
-                          {post.avatar}
-                        </span>
-                        <div>
-                          <h4 className="text-xs font-bold text-stone-850 dark:text-zinc-100">{post.author}</h4>
-                          <span className="text-[8px] font-mono text-stone-450">{post.time}</span>
-                        </div>
-                      </div>
-
-                      <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-md ${post.badgeColor}`}>
-                        {post.category}
+                    <h3 className="font-extrabold text-base">{userMetadata.name}</h3>
+                    <p className="text-xs text-stone-400 font-mono mb-1">{userMetadata.faydaId}</p>
+                    <div className="flex items-center gap-1.5 justify-center mb-2.5">
+                      <span className="bg-amber-500/10 border border-amber-500/30 text-amber-500 font-black text-[9px] px-2.5 py-1 rounded-full uppercase tracking-wider">
+                        Fayda Identity Verified
+                      </span>
+                      <span className="bg-blue-500/10 border border-blue-500/30 text-blue-400 font-mono font-black text-[9px] px-2.5 py-1 rounded-full uppercase tracking-wider">
+                        ID: EZ-1002458
                       </span>
                     </div>
 
-                    {/* Body */}
-                    <div className="space-y-1.5">
-                      <h5 className="text-xs font-extrabold text-[#C5A059]">{post.title}</h5>
-                      <p className="text-[11px] leading-relaxed opacity-85 font-sans">{post.body}</p>
-                      {post.price && (
-                        <div className="text-xs font-mono font-black text-amber-500 bg-amber-500/5 px-2 py-1 rounded-lg inline-block">
-                          🏷️ {post.price}
-                        </div>
-                      )}
+                    <div className="w-full h-px bg-stone-850 my-5"></div>
+
+                    <div className="w-full text-left space-y-3 text-xs">
+                      <div>
+                        <span className="text-[10px] text-stone-500 block uppercase font-mono font-bold">Official Hotline</span>
+                        <span className="font-medium">{userMetadata.phone}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-stone-500 block uppercase font-mono font-bold">Registered Email</span>
+                        <span className="font-medium">{userMetadata.email}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-stone-500 block uppercase font-mono font-bold">Active Auth Node</span>
+                        <span className="text-emerald-400 font-mono">Chapa Unified Gateway</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Multi-Role Switchboard Engine */}
+                  <div className="flex-1 space-y-6 w-full">
+                    <div className={`p-5 rounded-3xl border ${
+                      isDarkMode ? 'bg-zinc-900/40 border-zinc-900' : 'bg-white border-stone-200'
+                    }`}>
+                      <h3 className="text-xs font-black uppercase text-amber-500 flex items-center gap-1.5 mb-2">
+                        <Sliders size={14} /> Multi-Role Sub-System Router
+                      </h3>
+                      <p className="text-[11px] text-stone-400 mb-4">
+                        Every-zone operates on a unified multi-tenant architecture. Select your active context below. Role transitions are instantly propagated without account re-registrations.
+                      </p>
+
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+                        {[
+                          { id: 'customer', label: '🛒 Customer', desc: 'Escrow Checkout & Feed' },
+                          { id: 'vendor', label: '🏪 Store Vendor', desc: 'CRM, Listings & Promotions' },
+                          { id: 'agent', label: '🏠 Real Estate', desc: 'Apartment Contracts' },
+                          { id: 'courier', label: '💼 Overseas Agency', desc: 'Job Recruitment Visa' },
+                        ].map(role => (
+                          <button
+                            key={role.id}
+                            onClick={() => {
+                              setActiveRole(role.id as any);
+                              triggerPushNotification('Role Switched Successfully', `Switched active node to ${role.label}`, '🔄', 'profile');
+                            }}
+                            className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                              activeRole === role.id
+                                ? 'bg-amber-500/10 border-amber-500/50 text-amber-500 shadow-md'
+                                : isDarkMode ? 'bg-zinc-950/40 border-zinc-850 hover:border-zinc-700' : 'bg-stone-50 border-stone-200 hover:border-stone-400'
+                            }`}
+                          >
+                            <span className="font-black text-xs block">{role.label}</span>
+                            <span className="text-[9px] text-stone-400 block mt-0.5">{role.desc}</span>
+                          </button>
+                        ))}
+                      </div>
                     </div>
 
-                    {/* Footer Actions */}
-                    <div className="flex justify-between items-center pt-2.5 border-t border-stone-100 dark:border-zinc-850">
-                      <div className="flex items-center gap-3">
-                        <button 
-                          onClick={() => handleLikePost(post.id)}
-                          className={`flex items-center gap-1.5 text-[10px] font-bold ${
-                            post.hasLiked ? 'text-rose-500' : 'text-stone-450 hover:text-stone-300'
+                    {/* Role-Specific State Variables Preview */}
+                    <div className={`p-5 rounded-3xl border space-y-3 ${
+                      isDarkMode ? 'bg-zinc-900/40 border-zinc-900' : 'bg-white border-stone-200'
+                    }`}>
+                      <h4 className="text-xs font-black uppercase text-stone-300">
+                        {activeRole.toUpperCase()} CONTEXT STATISTICS
+                      </h4>
+                      
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono">
+                        {activeRole === 'customer' && (
+                          <>
+                            <div className="p-3 bg-black/30 rounded-xl">
+                              <span className="text-[9px] text-stone-500 block">ORDERS IN ESCROW</span>
+                              <span className="text-base font-black text-amber-500">3 Active</span>
+                            </div>
+                            <div className="p-3 bg-black/30 rounded-xl">
+                              <span className="text-[9px] text-stone-500 block">TOTAL DISBURSED</span>
+                              <span className="text-base font-black">42,900 ETB</span>
+                            </div>
+                            <div className="p-3 bg-black/30 rounded-xl">
+                              <span className="text-[9px] text-stone-500 block">FAYDA BIOMETRICS</span>
+                              <span className="text-base font-black text-emerald-400">PASSED</span>
+                            </div>
+                            <div className="p-3 bg-black/30 rounded-xl">
+                              <span className="text-[9px] text-stone-500 block">MATCH COUPLING</span>
+                              <span className="text-base font-black">94%</span>
+                            </div>
+                          </>
+                        )}
+
+                        {activeRole === 'vendor' && (
+                          <>
+                            <div className="p-3 bg-black/30 rounded-xl">
+                              <span className="text-[9px] text-stone-500 block">TODAY'S ORDERS</span>
+                              <span className="text-base font-black text-emerald-400">12 Packed</span>
+                            </div>
+                            <div className="p-3 bg-black/30 rounded-xl">
+                              <span className="text-[9px] text-stone-500 block">STORE ESCROW RESERVES</span>
+                              <span className="text-base font-black text-amber-500">114,800 ETB</span>
+                            </div>
+                            <div className="p-3 bg-black/30 rounded-xl">
+                              <span className="text-[9px] text-stone-500 block">CUSTOMER RETENTION</span>
+                              <span className="text-base font-black">44.8%</span>
+                            </div>
+                            <div className="p-3 bg-black/30 rounded-xl">
+                              <span className="text-[9px] text-stone-500 block">CRM CONTACTS</span>
+                              <span className="text-base font-black">142 Loyal</span>
+                            </div>
+                          </>
+                        )}
+
+                        {activeRole === 'agent' && (
+                          <>
+                            <div className="p-3 bg-black/30 rounded-xl">
+                              <span className="text-[9px] text-stone-500 block">LISTINGS COMMITTED</span>
+                              <span className="text-base font-black text-teal-400">8 Units</span>
+                            </div>
+                            <div className="p-3 bg-black/30 rounded-xl">
+                              <span className="text-[9px] text-stone-500 block">MONTHLY RENTALS REVENUE</span>
+                              <span className="text-base font-black">130,000 ETB</span>
+                            </div>
+                            <div className="p-3 bg-black/30 rounded-xl">
+                              <span className="text-[9px] text-stone-500 block">FEATURED CAMPAIGNS</span>
+                              <span className="text-base font-black text-amber-500">3 Scheduled</span>
+                            </div>
+                            <div className="p-3 bg-black/30 rounded-xl">
+                              <span className="text-[9px] text-stone-500 block">KYC TRUST SCORE</span>
+                              <span className="text-base font-black">98 / 100</span>
+                            </div>
+                          </>
+                        )}
+
+                        {activeRole === 'courier' && (
+                          <>
+                            <div className="p-3 bg-black/30 rounded-xl">
+                              <span className="text-[9px] text-stone-500 block">OVERSEAS VISAS GRANTED</span>
+                              <span className="text-base font-black text-pink-400">14 Active</span>
+                            </div>
+                            <div className="p-3 bg-black/30 rounded-xl">
+                              <span className="text-[9px] text-stone-500 block">PAY-PER-JOB CONTRACTS</span>
+                              <span className="text-base font-black">1,500 AED / Job</span>
+                            </div>
+                            <div className="p-3 bg-black/30 rounded-xl">
+                              <span className="text-[9px] text-stone-500 block">AGENCY SUBSCRIPTION</span>
+                              <span className="text-base font-black text-amber-500">Premium Plan</span>
+                            </div>
+                            <div className="p-3 bg-black/30 rounded-xl">
+                              <span className="text-[9px] text-stone-500 block">PENDING INTERVIEWS</span>
+                              <span className="text-base font-black">6 Applicants</span>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Universal Activity Timeline */}
+                <div className={`p-6 rounded-3xl border ${
+                  isDarkMode ? 'bg-zinc-900/40 border-zinc-900/80' : 'bg-white border-stone-200'
+                }`}>
+                  <div className="flex justify-between items-center border-b border-stone-850 pb-3 mb-4">
+                    <div>
+                      <h3 className="text-xs font-black uppercase text-amber-500 flex items-center gap-1.5">
+                        <Activity size={14} /> Universal Activity Timeline (Every-zone ID: EZ-1002458)
+                      </h3>
+                      <p className="text-[10px] text-stone-400">
+                        Tracks and unifies your activity fingerprint across all decentralized Every-zone modules.
+                      </p>
+                    </div>
+                    <span className="text-[9px] font-mono bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded font-bold">
+                      7 Synchronized Events
+                    </span>
+                  </div>
+
+                  <div className="relative border-l-2 border-stone-800 ml-4 pl-6 space-y-5 my-2">
+                    {[
+                      {
+                        title: 'Order Delivered Successfully 📦',
+                        module: 'Marketplace Escrow',
+                        desc: 'Your Samsung Galaxy S24 Ultra was successfully delivered and escrow funds cleared.',
+                        id: 'EZ-1002458-M1',
+                        status: 'COMPLETED',
+                        color: 'bg-emerald-500',
+                        time: 'Just now'
+                      },
+                      {
+                        title: 'Overseas Interview Passed 🏆',
+                        module: 'Overseas Employment',
+                        desc: 'Passed the final round video interview with UAE Logistic Group representatives.',
+                        id: 'EZ-1002458-J4',
+                        status: 'VERIFIED',
+                        color: 'bg-indigo-500',
+                        time: '2 hours ago'
+                      },
+                      {
+                        title: 'Wallet Security Deposit Settled 🪙',
+                        module: 'Decentralized Wallet',
+                        desc: 'Settled 14,500 ETB escrow holding vault deposit via Chapa API integration.',
+                        id: 'EZ-1002458-W7',
+                        status: 'SECURED',
+                        color: 'bg-amber-500',
+                        time: '1 day ago'
+                      },
+                      {
+                        title: 'New Vendor Store Followed 🏪',
+                        module: 'Vendor Network',
+                        desc: 'Subscribed to Aster Handloom Guild store. Received 10% coupon.',
+                        id: 'EZ-1002458-V9',
+                        status: 'FOLLOWED',
+                        color: 'bg-purple-500',
+                        time: '3 days ago'
+                      },
+                      {
+                        title: 'Premium House Property Saved 🏠',
+                        module: 'Real Estate Portal',
+                        desc: 'Bookmarked Bole Atlas Penthouse unit with smart-lock reservation option.',
+                        id: 'EZ-1002458-H2',
+                        status: 'SAVED',
+                        color: 'bg-teal-500',
+                        time: '4 days ago'
+                      },
+                      {
+                        title: 'Applied For Dubai Logistics Job 💼',
+                        module: 'Overseas Employment',
+                        desc: 'Passport biometric matched. Visa processing queue node generated automatically.',
+                        id: 'EZ-1002458-J4',
+                        status: 'IN PROGRESS',
+                        color: 'bg-blue-500',
+                        time: '1 week ago'
+                      },
+                      {
+                        title: 'Purchased Samsung S24 Phone 🛒',
+                        module: 'Marketplace',
+                        desc: 'Secured transaction, initiated escrow ledger. Dispatched via Sheger EV-courier.',
+                        id: 'EZ-1002458-M1',
+                        status: 'DELIVERED',
+                        color: 'bg-cyan-500',
+                        time: '1 week ago'
+                      }
+                    ].map((evt, idx) => (
+                      <div key={idx} className="relative group text-left">
+                        {/* Glowing node point */}
+                        <div className={`absolute -left-[31px] top-1 w-4 h-4 rounded-full border-4 ${isDarkMode ? 'border-[#0a0a0b]' : 'border-stone-100'} ${evt.color} shadow-lg group-hover:scale-125 transition-transform`} />
+                        
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                          <div>
+                            <h4 className="text-xs font-extrabold text-stone-200">{evt.title}</h4>
+                            <div className="flex items-center gap-2 mt-0.5 font-mono text-[9px]">
+                              <span className="text-stone-400 font-bold">{evt.module}</span>
+                              <span className="text-stone-600">•</span>
+                              <span className="text-amber-500 font-black">{evt.id}</span>
+                            </div>
+                            <p className="text-[11px] text-stone-400 mt-1 max-w-xl">{evt.desc}</p>
+                          </div>
+                          
+                          <div className="flex sm:flex-col items-start sm:items-end gap-1.5 justify-between">
+                            <span className="text-[8px] font-mono text-stone-500">{evt.time}</span>
+                            <span className={`text-[8.5px] font-mono font-black px-2 py-0.5 rounded ${
+                              evt.status === 'COMPLETED' || evt.status === 'VERIFIED' || evt.status === 'SECURED'
+                                ? 'bg-emerald-500/10 text-emerald-400'
+                                : 'bg-blue-500/10 text-blue-400'
+                            }`}>
+                              {evt.status}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* B2B Partnership & Self-Service Ad Campaign Gateway */}
+                <B2BAdPlatform 
+                  isDarkMode={isDarkMode}
+                  triggerPushNotification={triggerPushNotification}
+                  lang={lang}
+                  selectedCountry={selectedCountry}
+                />
+              </motion.div>
+            )}
+
+            {/* ---------------------------------------------------- */}
+            {/* PILLAR 2: UNIVERSAL INBOX */}
+            {/* ---------------------------------------------------- */}
+            {activeSuiteTab === 'inbox' && (
+              <motion.div
+                key="inbox"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="h-[58vh] flex gap-4 overflow-hidden"
+              >
+                {/* Inbox Left Sidebar */}
+                <div className={`w-1/3 rounded-3xl p-3 flex flex-col gap-3 border ${
+                  isDarkMode ? 'bg-zinc-950/40 border-zinc-900' : 'bg-white border-stone-200'
+                }`}>
+                  <div className="flex gap-1 overflow-x-auto scrollbar-none pb-2">
+                    {[
+                      { id: 'all', label: 'All' },
+                      { id: 'shop', label: '🛒 Shop' },
+                      { id: 'house', label: '🏠 House' },
+                      { id: 'jobs', label: '💼 Jobs' },
+                      { id: 'matchmaking', label: '❤️ Match' },
+                      { id: 'support', label: '👤 Support' },
+                      { id: 'vendor', label: '☕ Vendor' }
+                    ].map(btn => (
+                      <button
+                        key={btn.id}
+                        onClick={() => setInboxFilter(btn.id as any)}
+                        className={`text-[9px] font-black px-2.5 py-1.5 rounded-lg whitespace-nowrap cursor-pointer ${
+                          inboxFilter === btn.id
+                            ? 'bg-amber-500 text-stone-950 font-black'
+                            : isDarkMode ? 'bg-zinc-900 text-stone-400 hover:text-stone-200' : 'bg-stone-100 text-stone-600 hover:text-stone-900'
+                        }`}
+                      >
+                        {btn.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto space-y-1.5">
+                    {chatsList
+                      .filter(c => inboxFilter === 'all' || c.type === inboxFilter)
+                      .map(chat => (
+                        <div
+                          key={chat.id}
+                          onClick={() => setSelectedChatId(chat.id)}
+                          className={`p-3 rounded-2xl border text-left cursor-pointer transition relative ${
+                            selectedChatId === chat.id
+                              ? 'bg-amber-500/10 border-amber-500/40'
+                              : isDarkMode ? 'bg-zinc-900/30 border-transparent hover:bg-zinc-900/70' : 'bg-stone-50 border-transparent hover:bg-stone-100'
                           }`}
                         >
-                          <Heart size={12} className={post.hasLiked ? 'fill-rose-500' : ''} />
-                          <span>{post.likes}</span>
-                        </button>
-                        <span className="flex items-center gap-1.5 text-[10px] text-stone-450 font-sans">
-                          <MessageSquare size={12} />
-                          <span>{post.comments} comments</span>
-                        </span>
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="font-bold text-xs flex items-center gap-1.5">
+                              <span>{chat.avatar}</span> {chat.sender}
+                            </span>
+                            <span className="text-[8px] opacity-60 font-mono">{chat.time}</span>
+                          </div>
+                          <p className="text-[10px] text-stone-400 truncate pr-5 leading-normal">{chat.msg}</p>
+                          {chat.unread && (
+                            <div className="absolute right-3.5 bottom-3.5 w-1.5 h-1.5 bg-amber-500 rounded-full"></div>
+                          )}
+                        </div>
+                      ))}
+                  </div>
+                </div>
+
+                {/* Active Chat Panel */}
+                <div className={`flex-1 rounded-3xl p-4 flex flex-col border ${
+                  isDarkMode ? 'bg-zinc-950/40 border-zinc-900' : 'bg-white border-stone-200'
+                }`}>
+                  {(() => {
+                    const currentChat = chatsList.find(c => c.id === selectedChatId);
+                    if (!currentChat) return <div className="m-auto text-xs text-stone-500">Select conversation node.</div>;
+                    const messages = chatThread[selectedChatId] || [
+                      { sender: 'them', text: currentChat.msg, time: currentChat.time }
+                    ];
+
+                    return (
+                      <>
+                        <div className="flex items-center gap-2 border-b pb-3 mb-3">
+                          <span className="text-xl">{currentChat.avatar}</span>
+                          <div>
+                            <h4 className="text-xs font-black">{currentChat.sender}</h4>
+                            <span className="text-[8.5px] text-emerald-400 font-mono flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
+                              Unified secure channel active
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 text-xs">
+                          {messages.map((m, idx) => (
+                            <div key={idx} className={`flex flex-col ${m.sender === 'user' ? 'items-end' : 'items-start'}`}>
+                              <div className={`p-3 rounded-2xl max-w-md ${
+                                m.sender === 'user'
+                                  ? 'bg-amber-500 text-stone-950 font-medium rounded-tr-none'
+                                  : isDarkMode ? 'bg-zinc-900 text-stone-250 rounded-tl-none' : 'bg-stone-100 text-stone-900 rounded-tl-none'
+                              }`}>
+                                <p className="leading-relaxed">{m.text}</p>
+                              </div>
+                              <span className="text-[8px] opacity-45 font-mono mt-0.5 px-1">{m.time}</span>
+                            </div>
+                          ))}
+                        </div>
+
+                        <form onSubmit={handleSendMessage} className="mt-3 flex gap-2 pt-3 border-t">
+                          <input
+                            type="text"
+                            value={typedMessage}
+                            onChange={(e) => setTypedMessage(e.target.value)}
+                            placeholder="Type secure encrypted message..."
+                            className="flex-1 text-xs bg-black border border-zinc-800 rounded-xl px-4 py-2.5 outline-none focus:border-amber-500/40 text-stone-200"
+                          />
+                          <button type="submit" className="bg-amber-500 hover:bg-amber-600 text-stone-950 font-black px-4 py-2.5 rounded-xl text-xs flex items-center gap-1.5 cursor-pointer">
+                            <Send size={12} />
+                            <span>Send</span>
+                          </button>
+                        </form>
+                      </>
+                    );
+                  })()}
+                </div>
+              </motion.div>
+            )}
+
+            {/* ---------------------------------------------------- */}
+            {/* PILLAR 3: UNIVERSAL SEARCH & MAPS */}
+            {/* ---------------------------------------------------- */}
+            {activeSuiteTab === 'search' && (
+              <motion.div
+                key="search"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="space-y-6"
+              >
+                {/* Map Everywhere Subsystem Core Grid */}
+                <EcosystemMapsAndVideos 
+                  isDarkMode={isDarkMode}
+                  selectedCountry={selectedCountry}
+                  triggerPushNotification={triggerPushNotification}
+                  lang={lang}
+                />
+
+                <div className={`p-5 rounded-3xl border space-y-4 text-left ${
+                  isDarkMode ? 'bg-zinc-900/40 border-zinc-900' : 'bg-white border-stone-200'
+                }`}>
+                  <div className="relative">
+                    <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-500" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Global search across Shop Products, Real Estate Houses, Recruiting Jobs, Verified Stores, Videos..."
+                      className="w-full text-xs bg-black border border-zinc-800 rounded-2xl pl-11 pr-4 py-3 outline-none focus:border-amber-500/40 text-stone-200"
+                    />
+                  </div>
+
+                  <div className="flex gap-1.5 overflow-x-auto scrollbar-none pb-1">
+                    {['All', 'Products', 'Properties', 'Jobs', 'Stores', 'Videos'].map(cat => (
+                      <button
+                        key={cat}
+                        onClick={() => setSearchCategory(cat)}
+                        className={`text-[9px] font-black px-3.5 py-2 rounded-xl cursor-pointer ${
+                          searchCategory === cat
+                            ? 'bg-amber-500 text-stone-950 font-black'
+                            : isDarkMode ? 'bg-zinc-950/80 hover:bg-zinc-900 text-stone-400' : 'bg-stone-100 hover:bg-stone-200 text-stone-600'
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {filteredSearchItems.map(item => (
+                    <div
+                      key={item.id}
+                      className={`p-4 rounded-2xl border text-left flex flex-col justify-between hover:border-amber-500/35 transition ${
+                        isDarkMode ? 'bg-zinc-950/40 border-zinc-900' : 'bg-white border-stone-200'
+                      }`}
+                    >
+                      <div className="mb-4 text-left">
+                        <div className="flex justify-between items-center mb-1.5">
+                          <span className="text-[8px] font-black tracking-widest text-amber-500 font-mono uppercase bg-amber-500/10 px-2 py-0.5 rounded">
+                            {item.category}
+                          </span>
+                          <span className="text-xs font-black text-amber-500 font-mono">{item.rate}</span>
+                        </div>
+                        <h4 className="text-xs font-bold leading-snug">{item.name}</h4>
+                        <p className="text-[10px] text-stone-500 font-medium mt-1">{item.meta}</p>
                       </div>
 
                       <button
                         onClick={() => {
-                          alert(`Opening related deep module route for ${post.category}: "${post.title}"`);
+                          triggerPushNotification('Universal Direct Order', `Committed check out session for ${item.name}`, '🛍️', 'search');
                         }}
-                        className="text-[9.5px] font-black uppercase tracking-wider text-amber-500 bg-amber-500/5 border border-amber-500/20 px-3 py-1 rounded-xl hover:bg-amber-500 hover:text-zinc-950 transition cursor-pointer"
+                        className={`w-full py-2 bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 hover:border-amber-500/30 text-[10px] font-bold rounded-xl transition cursor-pointer flex items-center justify-center gap-1`}
                       >
-                        {post.actionText}
+                        <span>Request Escrow Direct</span>
+                        <ArrowRight size={10} className="mt-0.5" />
                       </button>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          )}
+                  ))}
 
-          {/* 2. VENDOR LIVE SHOPPING TAB */}
-          {activeTab === 'live' && (
-            <motion.div
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="grid grid-cols-1 md:grid-cols-12 gap-4 text-left"
-            >
-              {/* Left Column: Simulated Stream Player */}
-              <div className="md:col-span-7 space-y-3">
-                <div className="relative rounded-3xl overflow-hidden border border-red-500 bg-zinc-950 aspect-video flex flex-col justify-between p-4 shadow-xl shadow-red-500/5">
-                  
-                  {/* Stream Indicator overlays */}
-                  <div className="flex justify-between items-start z-10">
-                    <div className="flex items-center gap-2">
-                      <span className="bg-red-500 text-white font-mono font-black text-[8px] uppercase px-2 py-0.5 rounded animate-pulse">
-                        🔴 LIVE STREAM
-                      </span>
-                      <span className="bg-black/60 text-white font-mono text-[8.5px] px-2 py-0.5 rounded-full flex items-center gap-1.5">
-                        👁️ 1.2K watching
-                      </span>
-                    </div>
-
-                    <div className="bg-black/60 text-white font-mono text-[8.5px] px-2 py-0.5 rounded-full flex items-center gap-1 text-rose-500">
-                      ❤️ <span className="font-bold text-white">{liveLikes}</span>
-                    </div>
-                  </div>
-
-                  {/* Simulated Stream video illustration / animation */}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none opacity-20">
-                    <div className="w-20 h-20 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mb-2" />
-                    <span className="text-[10px] uppercase font-mono tracking-widest text-amber-500">Broadcasting tibeb live studio feed...</span>
-                  </div>
-
-                  {/* Active Question Highlight Overlays */}
-                  {activeQuestion && (
-                    <div className="z-10 bg-gradient-to-r from-amber-500 to-yellow-600 p-2.5 rounded-2xl max-w-xs text-zinc-950 shadow-md">
-                      <span className="text-[8px] font-black uppercase tracking-wider block text-zinc-900">Highlighted Question</span>
-                      <p className="text-[10px] font-bold leading-normal">"{activeQuestion}"</p>
+                  {filteredSearchItems.length === 0 && (
+                    <div className="col-span-full py-16 text-center text-stone-500 text-xs uppercase font-bold tracking-wider">
+                      No matching records found.
                     </div>
                   )}
-
-                  {/* Bottom: buy while watching overlay */}
-                  <div className="z-10 bg-black/85 backdrop-blur-md p-3 rounded-2xl border border-zinc-800 flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <span className="text-2xl">👗</span>
-                      <div className="text-left">
-                        <span className="text-[8px] text-amber-500 font-extrabold uppercase block tracking-wider">Live Deal (20% OFF)</span>
-                        <h6 className="text-[10.5px] font-bold text-zinc-100 truncate max-w-[150px]">Luxury Tibeb Makeda Dress</h6>
-                        <span className="text-[10px] font-mono text-zinc-300">3,360 ETB <span className="line-through text-zinc-500 text-[8px]">4,200 ETB</span></span>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => {
-                        setWalletBalance(prev => {
-                          if (prev < 3360) {
-                            alert('⚠️ Insufficient funds in wallet! Load wallet first.');
-                            return prev;
-                          }
-                          const next = prev - 3360;
-                          localStorage.setItem('ez_wallet_balance', next.toString());
-                          alert('🎉 Order placed successfully via Live stream! Escrow deposit locked.');
-                          triggerPushNotification('👗 Stream Purchase Complete!', 'You bought the Luxury Makeda Dress directly from the Live stream.', '🛍️', 'purchase');
-                          return next;
-                        });
-                      }}
-                      className="bg-red-500 hover:bg-red-400 text-white font-black text-[9px] uppercase tracking-wider px-3.5 py-2 rounded-xl transition cursor-pointer"
-                    >
-                      Buy Now 🛒
-                    </button>
-                  </div>
                 </div>
+              </motion.div>
+            )}
 
-                {/* Question Broadcast Form */}
-                <div className={`p-3 rounded-2xl border ${isDarkMode ? 'bg-zinc-900/50 border-zinc-850' : 'bg-white border-stone-200'}`}>
-                  <label className="text-[9px] font-bold uppercase tracking-wider text-stone-400 block mb-1">🎙️ Ask Live Question to Host</label>
-                  <div className="flex gap-2">
-                    <input 
-                      type="text" 
-                      placeholder="e.g. Can you show the back embroidery details?" 
-                      value={askQuestionText}
-                      onChange={(e) => setAskQuestionText(e.target.value)}
-                      className={`flex-1 text-xs p-2 rounded-xl border outline-none ${
-                        isDarkMode ? 'bg-zinc-950 border-zinc-800 text-zinc-200 placeholder-zinc-650' : 'bg-stone-50 border-stone-200 text-stone-900 placeholder-stone-400'
-                      }`}
-                    />
-                    <button 
-                      onClick={handleAskQuestion}
-                      className="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-black text-[10px] uppercase px-3.5 py-1 rounded-xl cursor-pointer"
-                    >
-                      Ask Host
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right Column: Live Likes & Scrolling Chat comment block */}
-              <div className="md:col-span-5 flex flex-col justify-between space-y-3 h-[320px] md:h-auto">
-                <div className={`flex-1 p-3 rounded-3xl border flex flex-col justify-between ${
-                  isDarkMode ? 'bg-zinc-900/50 border-zinc-850' : 'bg-white border-stone-200'
-                }`}>
-                  <div className="border-b border-stone-200/50 dark:border-zinc-850 pb-2 mb-2">
-                    <h4 className="text-[10px] font-black uppercase text-stone-400">💬 Live Scrolling Comments</h4>
-                  </div>
-
-                  {/* Comments scroll pane */}
-                  <div className="flex-1 overflow-y-auto space-y-2 max-h-48 pr-1">
-                    {liveComments.map(c => (
-                      <div key={c.id} className="text-[10.5px] leading-relaxed">
-                        <strong className="text-amber-500 mr-1.5 font-mono">@{c.user}:</strong>
-                        <span className="opacity-90">{c.text}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Input form */}
-                  <div className="flex gap-1.5 pt-2 border-t border-stone-100 dark:border-zinc-850">
-                    <input 
-                      type="text" 
-                      placeholder="Say something friendly..." 
-                      value={newLiveComment}
-                      onChange={(e) => setNewLiveComment(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter') handleSendLiveComment(); }}
-                      className={`flex-1 text-[10.5px] p-2 rounded-xl border outline-none ${
-                        isDarkMode ? 'bg-zinc-950 border-zinc-800 text-zinc-200' : 'bg-stone-50 border-stone-200 text-stone-800'
-                      }`}
-                    />
-                    <button 
-                      onClick={handleSendLiveComment}
-                      className={`p-2 rounded-xl border transition ${
-                        isDarkMode ? 'bg-zinc-950 border-zinc-800 text-zinc-300 hover:text-white' : 'bg-stone-50 border-stone-200 text-stone-600 hover:bg-stone-100'
-                      }`}
-                    >
-                      <Send size={12} />
-                    </button>
-                    <button 
-                      onClick={handleLikeLive}
-                      className={`p-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 transition active:scale-90 ${isLikingLive ? 'scale-110 bg-rose-500/20' : ''}`}
-                    >
-                      <Heart size={12} className="fill-rose-500" />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="p-3 bg-red-500/5 border border-dashed border-red-500/20 rounded-2xl flex items-center gap-2">
-                  <span className="text-base">🍿</span>
-                  <p className="text-[9px] text-red-500 leading-normal">
-                    <strong>TikTok Shop &amp; Amazon Live Experience:</strong> Tap the heart button rapidly to dispatch micro-likes directly to the live stream queue!
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* 3. SAVED SEARCHES TAB */}
-          {activeTab === 'saved' && (
-            <motion.div
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="space-y-4 text-left font-sans"
-            >
-              <div>
-                <h3 className="text-xs font-black uppercase text-amber-500">🔍 Real-Time Alert Saved Searches</h3>
-                <p className="text-[9px] opacity-60">Subscribe to any keywords or listings and get instant push notifications when matching records hit the network.</p>
-              </div>
-
-              {/* Add search term */}
-              <div className="flex gap-2">
-                <input 
-                  type="text" 
-                  placeholder="e.g. Dubai Driver Jobs, Bole House under 10M, iPhone 13..."
-                  value={newSearchTerm}
-                  onChange={(e) => setNewSearchTerm(e.target.value)}
-                  className={`flex-1 text-xs p-3 rounded-2xl border outline-none ${
-                    isDarkMode ? 'bg-zinc-90 w-100 bg-zinc-900 border-zinc-850 text-zinc-200' : 'bg-white border-stone-250 text-stone-900'
-                  }`}
-                />
-                <button
-                  onClick={saveSearchItem}
-                  className="bg-[#1E3A1A] hover:bg-[#2e5728] text-white font-black text-xs px-5 py-3 rounded-2xl transition tracking-wider uppercase shrink-0"
-                >
-                  Save Alert
-                </button>
-              </div>
-
-              {/* Active Alerts List */}
-              <div className="space-y-2 pt-2">
-                <h4 className="text-[9px] font-black uppercase text-stone-450 tracking-wider">Active Search Alert Pipelines</h4>
-                {savedSearches.length === 0 ? (
-                  <p className="text-xs text-stone-400 py-6 text-center">No active saved search alerts.</p>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {savedSearches.map((s) => (
-                      <div 
-                        key={s.id} 
-                        className={`p-3 rounded-2xl border flex justify-between items-center ${
-                          isDarkMode ? 'bg-zinc-900/60 border-zinc-850' : 'bg-white border-stone-200'
-                        }`}
-                      >
-                        <div className="text-left space-y-0.5">
-                          <span className="text-[8px] font-mono font-bold bg-amber-500/10 text-amber-500 px-1.5 py-0.2 rounded uppercase">
-                            {s.category}
-                          </span>
-                          <h5 className="text-xs font-bold text-stone-800 dark:text-zinc-100">{s.term}</h5>
-                          <p className="text-[8.5px] opacity-50">Saved {s.date}</p>
-                        </div>
-
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            onClick={() => triggerSimulatedMatch(s.term)}
-                            className="p-1.5 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-lg text-[9px] font-bold hover:bg-amber-500/20"
-                            title="Simulate Match"
-                          >
-                            🚀 Trigger Test Match
-                          </button>
-                          <button
-                            onClick={() => deleteSavedSearch(s.id)}
-                            className="p-1.5 text-stone-450 hover:text-red-500 rounded-lg"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          )}
-
-          {/* 4. SMART COMPARE TAB */}
-          {activeTab === 'compare' && (
-            <motion.div
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="space-y-4 text-left font-sans"
-            >
-              <div className="flex justify-between items-center border-b border-stone-200/50 dark:border-zinc-850 pb-2">
-                <div>
-                  <h3 className="text-xs font-black uppercase text-amber-500">⚖️ Smart Category Compare Engine</h3>
-                  <p className="text-[9px] opacity-60">Side-by-side spec and value analysis across products, land, and job visas</p>
-                </div>
-                
-                {/* Switch compare category */}
-                <div className="flex bg-stone-200/55 dark:bg-zinc-900 p-1 rounded-xl">
-                  {(['PRODUCT', 'HOUSE', 'JOB'] as const).map(cat => (
-                    <button
-                      key={cat}
-                      onClick={() => {
-                        setCompareCategory(cat);
-                        setCompareItems({ itemA: '0', itemB: '1' });
-                      }}
-                      className={`px-3 py-1 text-[9px] font-black uppercase rounded-lg transition-all ${
-                        compareCategory === cat
-                          ? (isDarkMode ? 'bg-amber-500 text-zinc-950' : 'bg-[#1E3A1A] text-white')
-                          : 'text-stone-500 dark:text-zinc-400'
-                      }`}
-                    >
-                      {cat}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Selection dropdown selectors */}
-              <div className="grid grid-cols-2 gap-3 p-3 bg-stone-100/50 dark:bg-zinc-900/40 rounded-2xl border border-stone-200/50 dark:border-zinc-850">
-                <div className="space-y-1">
-                  <label className="text-[8px] font-black uppercase text-stone-450 block">Compare Listing A</label>
-                  <select
-                    value={compareItems.itemA}
-                    onChange={(e) => setCompareItems(prev => ({ ...prev, itemA: e.target.value }))}
-                    className="w-full bg-stone-50 dark:bg-zinc-950 border border-stone-200 dark:border-zinc-800 text-xs p-2 rounded-xl outline-none text-stone-800 dark:text-zinc-100 font-bold"
-                  >
-                    {(compareCategory === 'PRODUCT' ? productOptions : compareCategory === 'HOUSE' ? houseOptions : jobOptions).map(item => (
-                      <option key={item.id} value={item.id}>{item.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[8px] font-black uppercase text-stone-450 block">Compare Listing B</label>
-                  <select
-                    value={compareItems.itemB}
-                    onChange={(e) => setCompareItems(prev => ({ ...prev, itemB: e.target.value }))}
-                    className="w-full bg-stone-50 dark:bg-zinc-950 border border-stone-200 dark:border-zinc-800 text-xs p-2 rounded-xl outline-none text-stone-800 dark:text-zinc-100 font-bold"
-                  >
-                    {(compareCategory === 'PRODUCT' ? productOptions : compareCategory === 'HOUSE' ? houseOptions : jobOptions).map(item => (
-                      <option key={item.id} value={item.id} disabled={item.id === compareItems.itemA}>{item.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Side by side sheet */}
-              {(() => {
-                const list = compareCategory === 'PRODUCT' ? productOptions : compareCategory === 'HOUSE' ? houseOptions : jobOptions;
-                const itemA = list.find(x => x.id === compareItems.itemA) || list[0];
-                const itemB = list.find(x => x.id === compareItems.itemB) || list[1];
-
-                return (
-                  <div className={`border rounded-2xl overflow-hidden ${isDarkMode ? 'border-zinc-850' : 'border-stone-200'}`}>
-                    <table className="w-full text-xs text-left">
-                      <thead>
-                        <tr className="bg-stone-100/50 dark:bg-zinc-900 border-b border-stone-200/50 dark:border-zinc-850 font-black uppercase tracking-wider text-[9px] text-stone-500">
-                          <th className="p-3 w-1/3">Specifications</th>
-                          <th className="p-3 text-amber-500 w-1/3">{itemA.name}</th>
-                          <th className="p-3 text-blue-400 w-1/3">{itemB.name}</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-stone-150 dark:divide-zinc-850">
-                        <tr>
-                          <td className="p-3 font-bold opacity-75">Valuation / Fee</td>
-                          <td className="p-3 font-mono font-black text-amber-500 text-[12px]">{itemA.price}</td>
-                          <td className="p-3 font-mono font-black text-blue-400 text-[12px]">{itemB.price}</td>
-                        </tr>
-                        <tr>
-                          <td className="p-3 font-bold opacity-75">Primary Spec</td>
-                          <td className="p-3 opacity-90">{itemA.spec1}</td>
-                          <td className="p-3 opacity-90">{itemB.spec1}</td>
-                        </tr>
-                        <tr>
-                          <td className="p-3 font-bold opacity-75">Secondary Spec</td>
-                          <td className="p-3 opacity-90">{itemA.spec2}</td>
-                          <td className="p-3 opacity-90">{itemB.spec2}</td>
-                        </tr>
-                        <tr>
-                          <td className="p-3 font-bold opacity-75">Quality Assessment</td>
-                          <td className="p-3 opacity-90">{itemA.spec3}</td>
-                          <td className="p-3 opacity-90">{itemB.spec3}</td>
-                        </tr>
-                        <tr>
-                          <td className="p-3 font-bold opacity-75">Assurance / Extras</td>
-                          <td className="p-3 opacity-90 text-emerald-500 font-bold">{itemA.spec4}</td>
-                          <td className="p-3 opacity-90 text-emerald-500 font-bold">{itemB.spec4}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                );
-              })()}
-            </motion.div>
-          )}
-
-          {/* 5. DIGITAL RECEIPTS TAB */}
-          {activeTab === 'receipts' && (
-            <motion.div
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="space-y-4 text-left font-sans"
-            >
-              <div className="flex justify-between items-center">
-                <div>
-                  <h3 className="text-xs font-black uppercase text-amber-500">🧾 Cognitive Escrow Digital Receipts</h3>
-                  <p className="text-[9px] opacity-60">Verified invoices with dynamic cryptographic QR hashes &amp; export links</p>
-                </div>
-                <div className="flex gap-1">
-                  <button 
-                    onClick={handleDownloadInvoice}
-                    className="p-2 bg-stone-200/50 dark:bg-zinc-900 border border-stone-250 dark:border-zinc-800 rounded-xl hover:scale-105 transition"
-                    title="Download PDF"
-                  >
-                    <Download size={13} className="text-amber-500" />
-                  </button>
-                  <button 
-                    onClick={handleShareInvoice}
-                    className="p-2 bg-stone-200/50 dark:bg-zinc-900 border border-stone-250 dark:border-zinc-800 rounded-xl hover:scale-105 transition"
-                    title="Share invoice"
-                  >
-                    <Share2 size={13} className="text-blue-500" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Receipt Body design */}
-              <div className={`p-5 rounded-3xl border text-xs space-y-4 max-w-sm mx-auto shadow-lg relative ${
-                isDarkMode ? 'bg-zinc-950 border-zinc-800 text-zinc-150' : 'bg-white border-stone-300 text-stone-800'
-              }`}>
-                {/* Header stamps */}
-                <div className="flex justify-between items-start border-b border-stone-200 dark:border-zinc-850 pb-3">
-                  <div className="text-left">
-                    <span className="text-[14px] font-black text-amber-500 tracking-tight font-sans">EVERY-ZONE CO.</span>
-                    <p className="text-[8px] opacity-60">Addis Ababa, Ethiopia</p>
-                    <p className="text-[8px] opacity-60 font-mono">TEL: +251-11-ZONE-000</p>
-                  </div>
-                  <div className="text-right text-[9px] font-mono">
-                    <span className="font-extrabold text-emerald-500 uppercase border border-emerald-500/30 bg-emerald-500/5 px-2 py-0.5 rounded">
-                      🔒 PAID SECURE
-                    </span>
-                    <p className="mt-1 opacity-70">Invoice: {selectedReceipt.invoiceNo}</p>
-                    <p className="opacity-75">{selectedReceipt.date}</p>
-                  </div>
-                </div>
-
-                {/* Customer block */}
-                <div className="text-left space-y-0.5 border-b border-stone-150 dark:border-zinc-850 pb-2.5">
-                  <span className="text-[7.5px] font-black uppercase text-stone-400">Verified Buyer</span>
-                  <div className="font-black text-stone-900 dark:text-zinc-100">{selectedReceipt.customerName}</div>
-                  <p className="text-[8px] opacity-60">NID Token: FAYDA-ET-0419245-A</p>
-                </div>
-
-                {/* Items grid */}
-                <div className="space-y-2 text-left">
-                  <span className="text-[7.5px] font-black uppercase text-stone-400">Settled Transactions</span>
-                  <div className="space-y-1.5">
-                    {selectedReceipt.items.map((it, idx) => (
-                      <div key={idx} className="flex justify-between items-center text-[10.5px]">
-                        <span className="opacity-90">{it.name} <span className="text-[8.5px] font-mono text-stone-450">(x{it.qty})</span></span>
-                        <span className="font-mono font-bold">{(it.price * it.qty).toLocaleString()} ETB</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Summary calculation */}
-                <div className="border-t border-dashed border-stone-350 dark:border-zinc-800 pt-3 space-y-1 text-left text-[11px]">
-                  <div className="flex justify-between opacity-75">
-                    <span>Subtotal:</span>
-                    <span className="font-mono">{selectedReceipt.subtotal.toLocaleString()} ETB</span>
-                  </div>
-                  <div className="flex justify-between opacity-75">
-                    <span>Ecosystem Escrow Fee:</span>
-                    <span className="font-mono">+{selectedReceipt.escrowFee.toLocaleString()} ETB</span>
-                  </div>
-                  <div className="flex justify-between text-amber-500 font-bold">
-                    <span className="flex items-center gap-1">✨ Loyalty Points Earned:</span>
-                    <span className="font-mono">+{selectedReceipt.pointsAccrued} Pts</span>
-                  </div>
-                  <div className="flex justify-between font-black text-xs border-t border-stone-200 dark:border-zinc-800 pt-1.5 text-stone-900 dark:text-white">
-                    <span>NET CHARGED:</span>
-                    <span className="font-mono text-amber-500">{selectedReceipt.total.toLocaleString()} ETB</span>
-                  </div>
-                </div>
-
-                {/* QR Code and verification stamps */}
-                <div className="flex items-center gap-3 bg-stone-50 dark:bg-zinc-900 p-2.5 rounded-2xl border border-stone-200/50 dark:border-zinc-850">
-                  <div className="p-1.5 bg-white rounded-xl">
-                    <QrCode size={45} className="text-neutral-950" />
-                  </div>
-                  <div className="text-left space-y-0.5 flex-1">
-                    <span className="text-[7px] font-mono font-black uppercase bg-emerald-500/10 text-emerald-500 px-1 py-0.2 rounded">
-                      ✓ QR Hash Verified
-                    </span>
-                    <p className="text-[8px] opacity-75 leading-tight">This receipt is cryptographically locked into the national tax verification registry.</p>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* 6. RECENTLY VIEWED TAB */}
-          {activeTab === 'recently' && (
-            <motion.div
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="space-y-4 text-left font-sans"
-            >
-              <div className="flex justify-between items-center border-b border-stone-200/50 dark:border-zinc-850 pb-2">
-                <div>
-                  <h3 className="text-xs font-black uppercase text-amber-500">👁️ Smart Recently Viewed Tracker</h3>
-                  <p className="text-[9px] opacity-60">Your dynamic local footprint across products, land, and job visas</p>
-                </div>
-                <button
-                  onClick={clearRecentlyViewed}
-                  className="text-[9px] font-black uppercase tracking-widest text-red-500 bg-red-500/5 hover:bg-red-500/10 px-3 py-1 rounded-xl"
-                >
-                  Clear Footprint
-                </button>
-              </div>
-
-              {recentlyViewed.length === 0 ? (
-                <div className="py-12 text-center text-stone-400 text-xs">
-                  Your footprint is empty.
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {recentlyViewed.map((item) => (
-                    <div 
-                      key={item.id} 
-                      className={`p-3.5 rounded-2xl border text-left flex justify-between items-center ${
-                        isDarkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-stone-200'
-                      }`}
-                    >
-                      <div className="space-y-1 max-w-[70%]">
-                        <span className="text-[7.5px] font-mono font-black uppercase px-2 py-0.5 rounded bg-amber-500/15 text-amber-500">
-                          {item.category}
-                        </span>
-                        <h4 className="text-xs font-black text-stone-850 dark:text-zinc-100 truncate">{item.title}</h4>
-                        <p className="text-[8.5px] text-stone-450 font-semibold">{item.store}</p>
-                      </div>
-
-                      <div className="text-right">
-                        <span className="text-xs font-mono font-black text-[#C5A059] block mb-1">
-                          {item.price}
-                        </span>
-                        <button
-                          onClick={() => alert(`Navigating directly to cached asset "${item.title}"`)}
-                          className="text-[9px] font-extrabold uppercase tracking-widest bg-[#1E3A1A] text-white px-2.5 py-1.5 rounded-xl hover:scale-105 transition"
-                        >
-                          Details
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </motion.div>
-          )}
-
-          {/* 7. LOYALTY & REWARDS TAB */}
-          {activeTab === 'loyalty' && (
-            <motion.div
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="space-y-4 text-left font-sans"
-            >
-              <div>
-                <h3 className="text-xs font-black uppercase text-amber-500">🏆 Loyalty &amp; Rewards Ledger</h3>
-                <p className="text-[9px] opacity-60">Verify your current tier perks and redeem loyalty points for shopping vouchers</p>
-              </div>
-
-              {/* Points Card */}
-              <div className="p-4 rounded-3xl bg-gradient-to-r from-[#1E3A1A] to-emerald-850 text-white flex flex-col justify-between gap-4 shadow-xl">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <span className="text-[8px] font-mono font-black uppercase tracking-widest text-[#C5A059] block">Cognitive Loyalty Balance</span>
-                    <span className="text-2xl font-black font-mono tracking-tight">{loyaltyPoints} <span className="text-xs font-sans font-bold">Points</span></span>
-                  </div>
-                  <div className={`text-xs font-black px-3 py-1 rounded-full border ${membership.color}`}>
-                    {membership.title}
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-[10px] opacity-80">
-                    <span>Next Level: Gold (500 pts)</span>
-                    <span>{loyaltyPoints}/500</span>
-                  </div>
-                  <div className="w-full bg-black/35 h-2 rounded-full overflow-hidden">
-                    <div 
-                      className="bg-amber-500 h-full rounded-full transition-all" 
-                      style={{ width: `${Math.min(100, (loyaltyPoints / 500) * 100)}%` }} 
-                    />
-                  </div>
-                  <p className="text-[9px] text-amber-300 italic font-medium">{membership.discount}</p>
-                </div>
-              </div>
-
-              {/* Rewards Store */}
-              <div className="space-y-2">
-                <h4 className="text-[10px] font-black uppercase text-stone-450 tracking-wider">🎁 Redeem Active Loyalty Vouchers</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {[
-                    { title: '150 ETB Telebirr Voucher', points: 150, desc: 'Adds 150 ETB directly to your wallet account.', icon: '💳' },
-                    { title: 'Free Passport Fast-Track Consultation', points: 300, desc: 'Waives fast-track assistance administrative surcharge fees.', icon: '✈️' },
-                    { title: 'Premium Buyer Badge status', points: 400, desc: 'Unlocks priority customer support and premium level tags instantly.', icon: '⭐' }
-                  ].map((reward, idx) => (
-                    <div 
-                      key={idx}
-                      className={`p-3 rounded-2xl border flex justify-between items-center ${
-                        isDarkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-stone-200'
-                      }`}
-                    >
-                      <div className="text-left space-y-0.5">
-                        <span className="text-lg">{reward.icon}</span>
-                        <h5 className="text-xs font-extrabold text-stone-850 dark:text-zinc-100">{reward.title}</h5>
-                        <p className="text-[9px] opacity-65 leading-tight max-w-[170px]">{reward.desc}</p>
-                      </div>
-
+            {/* ---------------------------------------------------- */}
+            {/* PILLAR 4: ACTIVITY CENTER */}
+            {/* ---------------------------------------------------- */}
+            {activeSuiteTab === 'activity' && (
+              <motion.div
+                key="activity"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="space-y-6"
+              >
+                <div className="flex justify-between items-center">
+                  <div className="flex gap-1.5">
+                    {[
+                      { id: 'all', label: 'All Alerts' },
+                      { id: 'orders', label: '🛒 Orders' },
+                      { id: 'payments', label: '💰 Payments' },
+                      { id: 'followers', label: '👥 Followers' },
+                      { id: 'matches', label: '❤️ Matches' },
+                    ].map(tab => (
                       <button
-                        onClick={() => claimLoyaltyReward(reward.points, reward.title)}
-                        className={`text-[9px] font-black uppercase tracking-widest px-3 py-2 rounded-xl transition ${
-                          loyaltyPoints >= reward.points
-                            ? 'bg-amber-500 hover:bg-amber-400 text-zinc-950 cursor-pointer shadow'
-                            : 'bg-stone-500/25 text-stone-400 cursor-not-allowed'
+                        key={tab.id}
+                        onClick={() => setActivityCategory(tab.id as any)}
+                        className={`text-[9.5px] font-black px-3.5 py-2 rounded-xl cursor-pointer ${
+                          activityCategory === tab.id
+                            ? 'bg-amber-500 text-stone-950 font-black'
+                            : isDarkMode ? 'bg-zinc-900 hover:bg-zinc-850 text-stone-400' : 'bg-stone-100 hover:bg-stone-200 text-stone-600'
                         }`}
                       >
-                        🏷️ {reward.points} Pts
+                        {tab.label}
                       </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* 8. REFERRAL SYSTEM TAB */}
-          {activeTab === 'referral' && (
-            <motion.div
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="space-y-4 text-left font-sans"
-            >
-              <div className="flex justify-between items-center">
-                <div>
-                  <h3 className="text-xs font-black uppercase text-amber-500">👥 National Referral Network</h3>
-                  <p className="text-[9px] opacity-60">Invite friends, track registered commission ledger payouts, and hit high leaderboards</p>
-                </div>
-                <button
-                  onClick={triggerSimulatedInvite}
-                  className="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-black text-[9.5px] uppercase tracking-wider px-3.5 py-1.5 rounded-xl shadow cursor-pointer"
-                >
-                  Simulate Sign-up 👥
-                </button>
-              </div>
-
-              {/* Invite Code Generator */}
-              <div className={`p-4 rounded-3xl border ${isDarkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-stone-200'} grid grid-cols-1 md:grid-cols-2 gap-4`}>
-                <div className="space-y-2">
-                  <span className="text-[8.5px] font-black uppercase text-stone-450 tracking-wider">Your Personal Referral Link</span>
-                  <div className="flex gap-2">
-                    <input 
-                      type="text" 
-                      readOnly 
-                      value={`https://everyzone.app/join?code=${referralCode}`}
-                      className={`flex-1 font-mono text-xs p-2.5 rounded-xl border outline-none ${
-                        isDarkMode ? 'bg-zinc-950 border-zinc-850 text-zinc-300' : 'bg-stone-50 border-stone-200 text-stone-750'
-                      }`}
-                    />
-                    <button
-                      onClick={() => {
-                        navigator.clipboard?.writeText(`https://everyzone.app/join?code=${referralCode}`);
-                        alert('📋 Link copied to clipboard!');
-                      }}
-                      className="bg-[#1E3A1A] text-white font-black text-xs px-4 py-2.5 rounded-xl hover:bg-emerald-800"
-                    >
-                      Copy Link
-                    </button>
-                  </div>
-                  <p className="text-[9px] text-stone-450">Receive <strong>100 ETB</strong> direct to wallet plus <strong>25 Loyalty Points</strong> for each verified friend who signs up with Fayda National ID.</p>
-                </div>
-
-                {/* Ledger metrics */}
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="p-3 bg-stone-100/50 dark:bg-zinc-950 border border-stone-200/55 dark:border-zinc-850 rounded-2xl flex flex-col justify-center">
-                    <span className="text-[8px] uppercase text-stone-450 font-black">Joined friends</span>
-                    <span className="text-base font-black text-amber-500 font-mono mt-1">👥 {referrals.length}</span>
-                  </div>
-                  <div className="p-3 bg-stone-100/50 dark:bg-zinc-950 border border-stone-200/55 dark:border-zinc-850 rounded-2xl flex flex-col justify-center">
-                    <span className="text-[8px] uppercase text-stone-450 font-black">Cleared Payout</span>
-                    <span className="text-base font-black text-emerald-500 font-mono mt-1">400 ETB</span>
-                  </div>
-                  <div className="p-3 bg-stone-100/50 dark:bg-zinc-950 border border-stone-200/55 dark:border-zinc-850 rounded-2xl flex flex-col justify-center">
-                    <span className="text-[8px] uppercase text-stone-450 font-black">Pending Hold</span>
-                    <span className="text-base font-black text-[#C5A059] font-mono mt-1">100 ETB</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Leaderboard */}
-              <div className="space-y-2">
-                <h4 className="text-[10px] font-black uppercase text-stone-450 tracking-wider">🏆 Ecosystem Referral Leaderboards</h4>
-                <div className={`p-4 rounded-3xl border overflow-hidden ${isDarkMode ? 'bg-zinc-900/50 border-zinc-850' : 'bg-white border-stone-200'}`}>
-                  <div className="space-y-2">
-                    {leaderboard.map((user, idx) => (
-                      <div key={idx} className="flex justify-between items-center text-xs pb-1.5 border-b border-stone-100 dark:border-zinc-850 last:border-b-0 last:pb-0">
-                        <div className="flex items-center gap-2.5">
-                          <span className={`w-5 h-5 rounded-full flex items-center justify-center font-mono font-black text-[9px] ${
-                            idx === 0 ? 'bg-yellow-400 text-zinc-950' :
-                            idx === 1 ? 'bg-stone-300 text-zinc-950' :
-                            idx === 2 ? 'bg-amber-600 text-white' : 'bg-stone-500/20 text-stone-400'
-                          }`}>
-                            #{user.rank}
-                          </span>
-                          <span className="font-bold opacity-90">{user.name}</span>
-                        </div>
-                        <div className="flex gap-4 font-mono font-bold text-[11px]">
-                          <span className="text-stone-450">{user.referrals} Joined</span>
-                          <span className="text-emerald-500">{user.earning} earned</span>
-                        </div>
-                      </div>
                     ))}
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* 9. AI PRICE PREDICTOR TAB */}
-          {activeTab === 'pricing' && (
-            <motion.div
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="space-y-4 text-left font-sans"
-            >
-              <div>
-                <h3 className="text-xs font-black uppercase text-amber-500">🏷️ Cognitive AI Price Suggester</h3>
-                <p className="text-[9px] opacity-60">Enter product parameters to generate expected competition metrics, suggested fair market value ranges, and demand forecasts</p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                {/* Inputs */}
-                <div className={`md:col-span-5 p-4 rounded-3xl border space-y-3.5 ${
-                  isDarkMode ? 'bg-zinc-900 border-zinc-850' : 'bg-white border-stone-200'
-                }`}>
-                  <div className="space-y-1">
-                    <label className="text-[8.5px] font-black uppercase text-stone-450 block">Product Label Name</label>
-                    <input 
-                      type="text" 
-                      value={suggestName}
-                      onChange={(e) => setSuggestName(e.target.value)}
-                      className={`w-full text-xs p-2.5 rounded-xl border outline-none font-bold ${
-                        isDarkMode ? 'bg-zinc-950 border-zinc-800 text-zinc-150' : 'bg-stone-50 border-stone-200 text-stone-800'
-                      }`}
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[8.5px] font-black uppercase text-stone-450 block">Ecosystem Category</label>
-                    <select
-                      value={suggestCategory}
-                      onChange={(e) => setSuggestCategory(e.target.value)}
-                      className={`w-full text-xs p-2.5 rounded-xl border outline-none font-bold ${
-                        isDarkMode ? 'bg-zinc-950 border-zinc-800 text-zinc-150' : 'bg-stone-50 border-stone-200 text-stone-800'
-                      }`}
-                    >
-                      <option value="Handicrafts">Handicrafts &amp; Tibeb dresses</option>
-                      <option value="Spices">Spices &amp; Specialty Foodstuff</option>
-                      <option value="Coffee">Specialty Coffee Beans</option>
-                      <option value="ConsumerElectronics">Consumer Electronics</option>
-                    </select>
                   </div>
 
                   <button
-                    onClick={calculateAiPricing}
-                    className="w-full bg-[#1E3A1A] hover:bg-emerald-800 text-white font-black py-2.5 text-xs uppercase tracking-wider rounded-xl shadow cursor-pointer flex items-center justify-center gap-1.5"
+                    onClick={() => {
+                      const sampleAlerts = [
+                        { id: `act-${Date.now()}`, type: 'payments', title: 'Withdrawal Approved', desc: '4,500 ETB sent directly to Telebirr mobile number.', time: 'Just now', unread: true },
+                        { id: `act-${Date.now()}`, type: 'orders', title: 'New Store Order Received', desc: 'Yared Shimelis purchased Silk Dress. Verification lock active.', time: 'Just now', unread: true }
+                      ];
+                      setActivitiesList(prev => [sampleAlerts[Math.floor(Math.random() * 2)], ...prev]);
+                      triggerPushNotification('Interactive Mockup Alert', 'New live transaction simulation fed into Activity Feed.', '🔔', 'activity');
+                    }}
+                    className="bg-[#C5A059] hover:bg-amber-400 text-stone-950 text-[10px] font-black uppercase px-4 py-2 rounded-xl flex items-center gap-1.5 cursor-pointer"
                   >
-                    <Sparkles size={13} className="text-amber-500 animate-spin-slow" />
-                    Predict Fair Valuation
+                    <RefreshCw size={10} />
+                    <span>Simulate Incoming Alert</span>
                   </button>
                 </div>
 
-                {/* Prediction Result outputs */}
-                <div className="md:col-span-7 flex flex-col justify-between">
-                  {suggestLoading ? (
-                    <div className="h-full min-h-[140px] flex flex-col items-center justify-center gap-3">
-                      <div className="w-8 h-8 border-3 border-amber-500 border-t-transparent rounded-full animate-spin" />
-                      <span className="text-xs font-bold text-amber-500 animate-pulse">Running semantic demand indexing...</span>
-                    </div>
-                  ) : suggestResults ? (
-                    <div className={`p-4 rounded-3xl border h-full space-y-3.5 text-xs ${
-                      isDarkMode ? 'bg-zinc-905 border-zinc-850' : 'bg-white border-stone-150'
-                    }`}>
-                      <div className="border-b border-stone-100 dark:border-zinc-850 pb-2 flex justify-between items-center">
-                        <span className="text-[10px] font-black uppercase text-amber-500">✓ Pricing Analysis Locked</span>
-                        <span className="text-[8px] font-mono bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded">Accuracy 94.2%</span>
+                <div className="space-y-2.5">
+                  {activitiesList
+                    .filter(a => activityCategory === 'all' || a.type === activityCategory)
+                    .map(act => (
+                      <div
+                        key={act.id}
+                        className={`p-4 rounded-3xl border flex items-center justify-between text-left ${
+                          isDarkMode ? 'bg-zinc-950/40 border-zinc-900' : 'bg-white border-stone-200'
+                        } ${act.unread ? 'border-l-4 border-l-amber-500' : ''}`}
+                      >
+                        <div className="flex gap-3 items-start">
+                          <div className={`p-2.5 rounded-2xl bg-black/45 text-sm`}>
+                            {act.type === 'orders' ? '🛒' : act.type === 'payments' ? '💰' : act.type === 'followers' ? '👥' : '❤️'}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-xs font-black">{act.title}</h4>
+                              {act.unread && (
+                                <span className="bg-amber-500/15 border border-amber-500/25 text-amber-500 text-[8px] font-black px-1.5 rounded uppercase font-mono">
+                                  New
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-stone-400 mt-0.5 leading-normal">{act.desc}</p>
+                          </div>
+                        </div>
+
+                        <span className="text-[9px] text-stone-500 font-mono font-bold shrink-0">{act.time}</span>
+                      </div>
+                    ))}
+                </div>
+              </motion.div>
+            )}
+
+            {/* ---------------------------------------------------- */}
+            {/* PILLAR 5: SMART FEED & SHORT VIDEOS */}
+            {/* ---------------------------------------------------- */}
+            {activeSuiteTab === 'feed' && (
+              <motion.div
+                key="feed"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="space-y-6 text-left"
+              >
+                {/* Dynamic Short Videos AI Feed Subsystem */}
+                <EcosystemMapsAndVideos 
+                  isDarkMode={isDarkMode}
+                  selectedCountry={selectedCountry}
+                  triggerPushNotification={triggerPushNotification}
+                  lang={lang}
+                />
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Creator Feed Timeline */}
+                <div className="md:col-span-2 space-y-6">
+                  {smartFeedPosts.map(post => (
+                    <div
+                      key={post.id}
+                      className={`p-5 rounded-3xl border text-left space-y-4 relative ${
+                        isDarkMode ? 'bg-zinc-950/40 border-zinc-900' : 'bg-white border-stone-200'
+                      }`}
+                    >
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-amber-500 text-stone-950 flex items-center justify-center text-sm font-bold">
+                            {post.avatar}
+                          </div>
+                          <div>
+                            <span className="text-xs font-extrabold block">{post.author}</span>
+                            <span className="text-[8.5px] text-stone-400 font-mono">Verified Influencer</span>
+                          </div>
+                        </div>
+
+                        <button className="text-stone-400 hover:text-white transition">
+                          <Share2 size={13} />
+                        </button>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3 text-left">
-                        <div className="p-2.5 bg-stone-100/50 dark:bg-zinc-950 border border-stone-200/50 dark:border-zinc-850 rounded-xl">
-                          <span className="text-[8px] uppercase text-stone-450 font-black block mb-0.5">Suggested Fair Value Range</span>
-                          <span className="text-[11.5px] font-black text-emerald-500 font-mono">{suggestResults.price}</span>
+                      <p className="text-xs leading-relaxed text-stone-300 font-medium">{post.content}</p>
+
+                      {post.media && (
+                        <div className="h-48 rounded-2xl overflow-hidden border border-zinc-850 relative">
+                          <img src={post.media} className="w-full h-full object-cover" alt="Feed Media" referrerPolicy="no-referrer" />
                         </div>
-                        <div className="p-2.5 bg-stone-100/50 dark:bg-zinc-950 border border-stone-200/50 dark:border-zinc-850 rounded-xl">
-                          <span className="text-[8px] uppercase text-stone-450 font-black block mb-0.5">Demand Forecast Rating</span>
-                          <span className="text-[11px] font-bold text-amber-500">{suggestResults.demand}</span>
-                        </div>
-                        <div className="p-2.5 bg-stone-100/50 dark:bg-zinc-950 border border-stone-200/50 dark:border-zinc-850 rounded-xl">
-                          <span className="text-[8px] uppercase text-stone-450 font-black block mb-0.5">Competitor Saturation Score</span>
-                          <span className="text-[11px] font-bold text-zinc-300">{suggestResults.competition}</span>
-                        </div>
-                        <div className="p-2.5 bg-stone-100/50 dark:bg-zinc-950 border border-stone-200/50 dark:border-zinc-850 rounded-xl">
-                          <span className="text-[8px] uppercase text-stone-450 font-black block mb-0.5">Most Optimal Taxonomy</span>
-                          <span className="text-[11px] font-bold text-[#C5A059]">{suggestResults.bestCat}</span>
+                      )}
+
+                      <div className="flex items-center gap-4 text-xs font-mono border-t border-b border-zinc-850/60 py-2">
+                        <button
+                          onClick={() => {
+                            setSmartFeedPosts(prev => prev.map(p => p.id === post.id ? { ...p, liked: !p.liked, likes: p.likes + (p.liked ? -1 : 1) } : p));
+                            triggerPushNotification('Social Reaction', 'Registered like metrics on smart blockchain feed.', '❤️', 'feed');
+                          }}
+                          className={`flex items-center gap-1.5 transition ${post.liked ? 'text-rose-500' : 'text-stone-400 hover:text-stone-200'}`}
+                        >
+                          <Heart size={13} className={post.liked ? 'fill-current' : ''} />
+                          <span>{post.likes}</span>
+                        </button>
+
+                        <div className="flex items-center gap-1 text-stone-400">
+                          <MessageCircle size={13} />
+                          <span>{post.comments.length} Comments</span>
                         </div>
                       </div>
 
-                      <div className="p-3 bg-amber-500/10 border border-amber-500/30 text-[9.5px] text-amber-500 leading-relaxed rounded-xl flex gap-2">
-                        <span>💡</span>
-                        <p><strong>Recommendation:</strong> Setting your initial price to <strong>4,400 ETB</strong> optimizes both conversions and profit margins due to upcoming holiday seasonality.</p>
+                      {/* Comment sections */}
+                      <div className="space-y-2 text-xs">
+                        {post.comments.map((comment, cIdx) => (
+                          <div key={cIdx} className="bg-black/30 p-2.5 rounded-xl">
+                            <span className="font-bold text-amber-500 block text-[9.5px]">{comment.author}</span>
+                            <p className="text-stone-300 leading-normal mt-0.5">{comment.text}</p>
+                          </div>
+                        ))}
+
+                        <form
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            const txt = newCommentInput[post.id];
+                            if (!txt || !txt.trim()) return;
+                            setSmartFeedPosts(prev => prev.map(p => p.id === post.id ? { ...p, comments: [...p.comments, { author: 'Henok', text: txt }] } : p));
+                            setNewCommentInput(prev => ({ ...prev, [post.id]: '' }));
+                            triggerPushNotification('Social Comment Posted', 'Comment dynamically attached directly to feed entry.', '💬', 'feed');
+                          }}
+                          className="flex gap-2 pt-2"
+                        >
+                          <input
+                            type="text"
+                            value={newCommentInput[post.id] || ''}
+                            onChange={(e) => setNewCommentInput(prev => ({ ...prev, [post.id]: e.target.value }))}
+                            placeholder="Add your verified comment..."
+                            className="flex-1 bg-black border border-zinc-800 rounded-lg px-3 py-1.5 text-[11px] outline-none text-stone-200"
+                          />
+                          <button type="submit" className="bg-amber-500 hover:bg-amber-600 text-stone-950 font-black px-3 py-1.5 rounded-lg text-[10px] cursor-pointer">
+                            Submit
+                          </button>
+                        </form>
                       </div>
                     </div>
-                  ) : (
-                    <div className="h-full min-h-[140px] flex flex-col items-center justify-center text-center p-6 border border-dashed border-stone-300 dark:border-zinc-800 rounded-3xl">
-                      <Sparkles size={24} className="text-stone-400 mb-1.5" />
-                      <p className="text-xs text-stone-400 font-medium">Input product characteristics to trigger AI cognitive price modeling.</p>
+                  ))}
+                </div>
+
+                {/* Left Side: Create Post */}
+                <div className="space-y-6">
+                  <div className={`p-5 rounded-3xl border space-y-4 text-left ${
+                    isDarkMode ? 'bg-zinc-950/40 border-zinc-900' : 'bg-white border-stone-200'
+                  }`}>
+                    <h4 className="text-xs font-black uppercase text-amber-500 flex items-center gap-1">
+                      <Plus size={14} /> Publish Creator Update
+                    </h4>
+                    
+                    <textarea
+                      value={newPostText}
+                      onChange={(e) => setNewPostText(e.target.value)}
+                      placeholder="What Sidama coffee or traditional Tibeb styles are you launching today?"
+                      className="w-full text-xs bg-black border border-zinc-800 rounded-xl p-3 text-stone-200 min-h-[90px] outline-none"
+                    />
+
+                    <input
+                      type="url"
+                      value={newPostUrl}
+                      onChange={(e) => setNewPostUrl(e.target.value)}
+                      placeholder="Attach image/video URL (Optional)"
+                      className="w-full text-xs bg-black border border-zinc-800 rounded-lg px-3 py-2 text-stone-200 outline-none"
+                    />
+
+                    <button
+                      onClick={() => {
+                        if (!newPostText.trim()) return;
+                        const newPost = {
+                          id: `f-${Date.now()}`,
+                          author: 'Henok Tadesse (User)',
+                          avatar: '👤',
+                          content: newPostText,
+                          media: newPostUrl || undefined,
+                          likes: 0,
+                          liked: false,
+                          comments: []
+                        };
+                        setSmartFeedPosts(prev => [newPost, ...prev]);
+                        setNewPostText('');
+                        setNewPostUrl('');
+                        triggerPushNotification('Feed Post Created', 'Post live on decentralized client smart feeds.', '📱', 'feed');
+                      }}
+                      className="w-full py-2.5 bg-[#C5A059] hover:bg-amber-400 text-stone-950 font-black text-xs uppercase rounded-xl transition cursor-pointer"
+                    >
+                      Broadcast to Every-zone
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+            {/* ---------------------------------------------------- */}
+            {/* PILLAR 6: CREATOR MODE (LIVESTREAM SIMULATOR) */}
+            {/* ---------------------------------------------------- */}
+            {activeSuiteTab === 'creator' && (
+              <motion.div
+                key="creator"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="grid grid-cols-1 md:grid-cols-3 gap-6"
+              >
+                {/* Left side: Simulated Live stream viewport */}
+                <div className="md:col-span-2 space-y-4">
+                  <div className="h-[48vh] bg-stone-950 border border-zinc-850 rounded-3xl overflow-hidden relative shadow-inner">
+                    {/* Live Stream Animated Streamer Frame */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40 z-10" />
+                    
+                    {isLiveStreaming ? (
+                      <div className="w-full h-full flex flex-col justify-between p-4 relative z-20">
+                        {/* Overlay Header */}
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <span className="bg-red-500 text-white font-black text-[9px] px-2 py-0.5 rounded animate-pulse font-mono uppercase">
+                              LIVE 🔴
+                            </span>
+                            <span className="bg-black/60 text-stone-200 text-[9px] font-bold px-2 py-0.5 rounded-full font-mono">
+                              👤 {liveViewers} Viewers
+                            </span>
+                          </div>
+
+                          <span className="bg-[#C5A059]/20 border border-[#C5A059]/30 text-amber-500 font-mono text-[9px] font-extrabold px-3 py-1 rounded-full">
+                            EZ-TIPS ENABLED
+                          </span>
+                        </div>
+
+                        {/* Animated Video Stream Frame */}
+                        <div className="text-center my-auto">
+                          <div className="w-16 h-16 rounded-full border-2 border-red-500 animate-ping mx-auto absolute inset-0 m-auto opacity-35" />
+                          <p className="text-sm font-black text-white uppercase tracking-widest drop-shadow animate-pulse">
+                            Broadcasting Live Video Stream
+                          </p>
+                          <p className="text-[10px] text-stone-400 mt-1">Camera and microphone access authorized via requestFramePermissions</p>
+                        </div>
+
+                        {/* Stream Waterfall Chat Overlay */}
+                        <div className="h-32 bg-gradient-to-t from-black/60 to-transparent rounded-xl p-2.5 overflow-y-auto space-y-1.5 text-left text-[10px]">
+                          {liveChat.map((msg, index) => (
+                            <div key={index} className="flex gap-1.5">
+                              <span className="font-extrabold text-amber-400 shrink-0 font-sans">{msg.author}:</span>
+                              <span className="text-white leading-relaxed">{msg.text}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center space-y-4 p-8">
+                        <span className="text-4xl">🎥</span>
+                        <div className="text-center max-w-sm space-y-2">
+                          <h4 className="font-black text-sm uppercase tracking-wide">Ready to go Live on Every-zone?</h4>
+                          <p className="text-[11px] text-stone-400 leading-relaxed">
+                            Simulate interactive live streaming. Go live and watch automated user comments and tipping flow in. 100% simulated Chapa transaction callbacks are handled in real-time.
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setIsLiveStreaming(true);
+                            triggerPushNotification('Live Broadcast Started', 'Every-zone community notified. Viewer lobbies routing...', '🔴', 'creator');
+                          }}
+                          className="bg-red-500 hover:bg-red-600 text-white font-black text-xs uppercase px-6 py-2.5 rounded-full shadow-lg shadow-red-500/10 cursor-pointer"
+                        >
+                          Start Live Stream 🔴
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {isLiveStreaming && (
+                    <div className="flex justify-between items-center">
+                      <p className="text-[10px] text-stone-400 italic">Comments containing emoji triggers credit your real system balance.</p>
+                      <button
+                        onClick={() => {
+                          setIsLiveStreaming(false);
+                          triggerPushNotification('Live Broadcast Ended', 'Live stream statistics recorded.', '⏹️', 'creator');
+                        }}
+                        className="bg-zinc-800 hover:bg-zinc-700 text-stone-200 text-[10px] font-black uppercase px-4 py-2 rounded-xl cursor-pointer"
+                      >
+                        Terminate Broadcast
+                      </button>
                     </div>
                   )}
                 </div>
-              </div>
-            </motion.div>
-          )}
 
-          {/* 10. AI FRAUD DETECTION TAB */}
-          {activeTab === 'fraud' && (
-            <motion.div
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="space-y-4 text-left font-sans"
-            >
-              <div className="flex justify-between items-center border-b border-stone-200/50 dark:border-zinc-850 pb-2">
-                <div>
-                  <h3 className="text-xs font-black uppercase text-amber-500">🤖 Cognitive AI Fraud Guard Audit</h3>
-                  <p className="text-[9px] opacity-60">Real-time scan logs filtering fake products, duplicated national IDs, and bot message spam</p>
-                </div>
-                <button
-                  onClick={runActiveFraudSweep}
-                  className="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-black text-[9.5px] uppercase tracking-wider px-3.5 py-1.5 rounded-xl shadow cursor-pointer flex items-center gap-1"
-                >
-                  <ShieldCheck size={12} /> Launch Live Sweep
-                </button>
-              </div>
+                {/* Creator Stats and monetization panel */}
+                <div className="space-y-6">
+                  <div className={`p-5 rounded-3xl border space-y-4 text-left ${
+                    isDarkMode ? 'bg-zinc-950/40 border-zinc-900' : 'bg-white border-stone-200'
+                  }`}>
+                    <h4 className="text-xs font-black uppercase text-amber-500 flex items-center gap-1.5">
+                      <TrendingUp size={14} /> Creator Monetization
+                    </h4>
 
-              {/* Scanned Fraud Items */}
-              <div className="space-y-2.5">
-                {fraudScans.map((sc) => (
-                  <div 
-                    key={sc.id} 
-                    className={`p-3.5 rounded-2xl border flex gap-3.5 items-start ${
-                      isDarkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-stone-200'
-                    }`}
-                  >
-                    <span className={`p-2 rounded-xl text-base ${
-                      sc.severity === 'HIGH' ? 'bg-red-500/10 text-red-500 border border-red-500/20' :
-                      sc.severity === 'MEDIUM' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
-                    }`}>
-                      🚨
-                    </span>
-                    <div className="text-left space-y-1 flex-1 text-xs">
-                      <div className="flex justify-between items-center">
-                        <span className="font-extrabold text-[#C5A059] uppercase tracking-wider text-[10px]">{sc.type}</span>
-                        <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded ${
-                          sc.severity === 'HIGH' ? 'bg-red-500 text-white' :
-                          sc.severity === 'MEDIUM' ? 'bg-amber-500 text-zinc-950 font-black' : 'bg-blue-600 text-white'
-                        }`}>
-                          {sc.severity} RISK
-                        </span>
-                      </div>
-                      <h4 className="font-bold text-stone-800 dark:text-zinc-100">{sc.target}</h4>
-                      <p className="text-[10.5px] opacity-80 leading-relaxed font-sans">{sc.message}</p>
-                      
-                      <div className="flex justify-between items-center pt-2 mt-1 border-t border-stone-100 dark:border-zinc-850 text-[9px] font-mono font-bold">
-                        <span className="text-stone-450">Resolution Method:</span>
-                        <span className="text-emerald-500 uppercase">{sc.action}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-
-          {/* 11. MINI CRM TAB */}
-          {activeTab === 'crm' && (
-            <motion.div
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="space-y-4 text-left font-sans"
-            >
-              <div>
-                <h3 className="text-xs font-black uppercase text-amber-500">🗃️ Store Merchant Mini-CRM</h3>
-                <p className="text-[9px] opacity-60">Track repeat buyers, VIP flags, personal customer notes, and send instant promotional birthday vouchers</p>
-              </div>
-
-              {/* Customer table */}
-              <div className="space-y-3">
-                {crmCustomers.map((c) => (
-                  <div 
-                    key={c.id}
-                    className={`p-4 rounded-3xl border space-y-3.5 ${
-                      isDarkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-stone-200'
-                    }`}
-                  >
-                    {/* Top Row */}
-                    <div className="flex justify-between items-start">
-                      <div className="text-left space-y-0.5">
-                        <div className="flex items-center gap-2">
-                          <h4 className="text-xs font-black text-stone-850 dark:text-zinc-100">{c.name}</h4>
-                          {c.vip && (
-                            <span className="bg-amber-500/10 text-amber-500 text-[8px] font-black uppercase px-2 py-0.5 rounded-full border border-amber-500/25">
-                              ⭐ VIP BUYER
-                            </span>
-                          )}
-                          <span className="bg-stone-500/20 text-stone-400 text-[8px] font-mono px-1.5 py-0.2 rounded">
-                            🔄 Repeat (Orders: {c.orders})
-                          </span>
+                    <div className="space-y-3 font-mono">
+                      <div className="p-3.5 bg-black/35 rounded-2xl flex justify-between items-center">
+                        <div>
+                          <span className="text-[8px] text-stone-500 block uppercase font-sans">Accumulated Tips</span>
+                          <span className="text-base font-black text-amber-500">{creatorRevenue.toLocaleString()} ETB</span>
                         </div>
-                        <p className="text-[8.5px] text-stone-450">Lifetime Volume: <strong className="font-mono text-[#C5A059]">{c.totalSpent}</strong></p>
+                        <span className="text-xl">💎</span>
                       </div>
 
-                      <div className="text-right">
-                        <span className="text-[8px] font-mono text-stone-450 uppercase block">🎂 Birthday Profile</span>
-                        <span className="text-[10px] text-zinc-300 font-bold">{c.birthday}</span>
+                      <div className="p-3.5 bg-black/35 rounded-2xl flex justify-between items-center">
+                        <div>
+                          <span className="text-[8px] text-stone-500 block uppercase font-sans">Ad View Revenue</span>
+                          <span className="text-base font-black text-emerald-400">4,120 ETB</span>
+                        </div>
+                        <span className="text-xl">📈</span>
                       </div>
-                    </div>
 
-                    {/* CRM Note update block */}
-                    <div className="space-y-1.5">
-                      <label className="text-[8px] font-black uppercase text-stone-450 block">Customer Notes / Special Border Requirements</label>
-                      <div className="flex gap-2">
-                        <input 
-                          type="text" 
-                          placeholder={c.notes}
-                          value={newCrmNotes[c.id] !== undefined ? newCrmNotes[c.id] : ''}
-                          onChange={(e) => handleUpdateCrmNotes(c.id, e.target.value)}
-                          className={`flex-1 text-[10.5px] p-2 rounded-xl border outline-none ${
-                            isDarkMode ? 'bg-zinc-950 border-zinc-800 text-zinc-150 placeholder-zinc-650' : 'bg-stone-50 border-stone-200 text-stone-800 placeholder-stone-400'
-                          }`}
-                        />
+                      <div className="p-3.5 bg-black/35 rounded-2xl flex justify-between items-center">
+                        <div>
+                          <span className="text-[8px] text-stone-500 block uppercase font-sans">Live Payout Status</span>
+                          <span className="text-xs font-black text-emerald-400">READY FOR CHAPA</span>
+                        </div>
                         <button
-                          onClick={() => saveCrmNotes(c.id)}
-                          className="bg-[#1E3A1A] hover:bg-emerald-800 text-white font-black text-[9px] px-3.5 py-1 rounded-xl transition uppercase tracking-wider"
+                          onClick={() => {
+                            if (creatorRevenue === 0) return;
+                            setWalletBalance(b => b + creatorRevenue);
+                            setCreatorRevenue(0);
+                            triggerPushNotification('Creator Payout Success', 'Disbursed tipping pools to main system wallet successfully.', '💰', 'creator');
+                          }}
+                          className="bg-amber-500 hover:bg-amber-600 text-stone-950 font-black text-[9px] px-2.5 py-1 rounded-lg uppercase cursor-pointer"
                         >
-                          Save
+                          Disburse
                         </button>
                       </div>
                     </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
 
-                    {/* Direct Quick Messages */}
-                    <div className="flex items-center gap-1.5 pt-2 border-t border-stone-100 dark:border-zinc-850">
-                      <span className="text-[8px] font-black uppercase text-stone-450 tracking-wider">Quick Actions:</span>
-                      <button 
+            {/* ---------------------------------------------------- */}
+            {/* PILLAR 7: REPUTATION SYSTEM */}
+            {/* ---------------------------------------------------- */}
+            {activeSuiteTab === 'reputation' && (
+              <motion.div
+                key="reputation"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="space-y-6 text-left"
+              >
+                <div className="flex flex-col md:flex-row gap-6 items-center">
+                  {/* Gauge score display */}
+                  <div className={`p-8 rounded-3xl border w-full md:w-2/5 flex flex-col items-center justify-center text-center ${
+                    isDarkMode ? 'bg-zinc-950/40 border-zinc-900' : 'bg-white border-stone-200'
+                  }`}>
+                    <h3 className="text-xs font-black uppercase text-amber-500 tracking-wider mb-6 font-mono">
+                      AI-Scored Reputation Gauge
+                    </h3>
+
+                    <div className="relative w-36 h-36 flex items-center justify-center">
+                      {/* CSS-based circular score ring */}
+                      <svg className="absolute inset-0 w-full h-full transform -rotate-90">
+                        <circle cx="72" cy="72" r="64" fill="transparent" stroke="#222" strokeWidth="8" />
+                        <circle 
+                          cx="72" 
+                          cy="72" 
+                          r="64" 
+                          fill="transparent" 
+                          stroke="#C5A059" 
+                          strokeWidth="8" 
+                          strokeDasharray={402}
+                          strokeDashoffset={402 - (402 * reputationScore) / 100}
+                          className="transition-all duration-1000 ease-out"
+                        />
+                      </svg>
+                      
+                      <div className="flex flex-col items-center">
+                        <span className="text-3xl font-black font-mono text-white leading-none">{reputationScore}</span>
+                        <span className="text-[10px] text-stone-400 font-mono font-bold mt-1 uppercase">Excellent</span>
+                      </div>
+                    </div>
+
+                    <p className="text-[10px] text-stone-500 leading-normal mt-6">
+                      Calculated using cryptographically verified ledger activities: KYC (Fayda ID), resolution rates, delivery maps verification speed, and premium store review statuses.
+                    </p>
+                  </div>
+
+                  {/* Reputation break down & boosting items */}
+                  <div className="flex-1 space-y-4">
+                    <div className={`p-5 rounded-3xl border ${
+                      isDarkMode ? 'bg-zinc-900/40 border-zinc-900' : 'bg-white border-stone-200'
+                    }`}>
+                      <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest block font-mono">
+                        🛡️ ACTIVE TRUST FACTORS
+                      </span>
+                      <h4 className="text-xs font-black uppercase mt-1 mb-3">Verified Ledger Strengths</h4>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-[11px]">
+                        <div className="p-3 bg-black/25 rounded-2xl flex gap-2.5 items-start">
+                          <span className="text-emerald-400">✓</span>
+                          <div>
+                            <span className="font-extrabold block text-stone-200">KYC Level 2 Registered</span>
+                            <span className="text-[9.5px] text-stone-500 font-mono">Goverment passport and TIN match</span>
+                          </div>
+                        </div>
+
+                        <div className="p-3 bg-black/25 rounded-2xl flex gap-2.5 items-start">
+                          <span className="text-emerald-400">✓</span>
+                          <div>
+                            <span className="font-extrabold block text-stone-200">Zero Disputes Opened</span>
+                            <span className="text-[9.5px] text-stone-500 font-mono">100% compliance rate</span>
+                          </div>
+                        </div>
+
+                        <div className="p-3 bg-black/25 rounded-2xl flex gap-2.5 items-start">
+                          <span className="text-emerald-400">✓</span>
+                          <div>
+                            <span className="font-extrabold block text-stone-200">Courier Delivery Speed</span>
+                            <span className="text-[9.5px] text-stone-500 font-mono">Sheger Express averages &lt; 28 mins</span>
+                          </div>
+                        </div>
+
+                        <div className="p-3 bg-black/25 rounded-2xl flex gap-2.5 items-start">
+                          <span className="text-emerald-400">✓</span>
+                          <div>
+                            <span className="font-extrabold block text-stone-200">Merchant subscription status</span>
+                            <span className="text-[9.5px] text-stone-500 font-mono">Verified Gold Merchant tier</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Boosting actions */}
+                    <div className={`p-5 rounded-3xl border flex justify-between items-center ${
+                      isDarkMode ? 'bg-zinc-900/40 border-zinc-900' : 'bg-white border-stone-200'
+                    }`}>
+                      <div>
+                        <span className="text-[9px] text-amber-500 font-black uppercase block font-mono">⚠️ Reputation Action Required</span>
+                        <h4 className="text-xs font-bold leading-normal">Verify Government Fayda biometric ID</h4>
+                        <p className="text-[10px] text-stone-400">Instantly boosts reputation scorecard to level 3 (+5 Reputation Points) and unlocks automated escrow clearance limits.</p>
+                      </div>
+
+                      <button
                         onClick={() => {
-                          alert(`Directing 10% Birthday Discount voucher code to ${c.name} telegram inbox.`);
-                          triggerPushNotification('🎂 Birthday Voucher Sent!', `Birthday promotion successfully dispatched to ${c.name}`, '🎉', 'marketing');
+                          if (isFaydaBiometricsVerified) return;
+                          setIsFaydaBiometricsVerified(true);
+                          setReputationScore(99);
+                          triggerPushNotification('Biometrics Verified', 'Fayda ID level 3 certificate validated. Score updated.', '🛡️', 'reputation');
                         }}
-                        className={`text-[9px] font-bold px-2.5 py-1.5 rounded-lg border transition ${
-                          isDarkMode ? 'bg-zinc-950 border-zinc-800 text-zinc-300 hover:border-amber-500/50' : 'bg-stone-50 border-stone-200 text-stone-750 hover:border-amber-500'
+                        className={`px-4 py-2.5 rounded-xl font-bold text-xs whitespace-nowrap cursor-pointer transition ${
+                          isFaydaBiometricsVerified
+                            ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
+                            : 'bg-amber-500 hover:bg-amber-600 text-stone-950 font-black shadow shadow-amber-500/10'
                         }`}
                       >
-                        🎁 Send 10% Birthday Code
-                      </button>
-                      <button 
-                        onClick={() => {
-                          alert(`Generating CBE/Telebirr fast payout settlement clearance link for ${c.name}.`);
-                        }}
-                        className={`text-[9px] font-bold px-2.5 py-1.5 rounded-lg border transition ${
-                          isDarkMode ? 'bg-zinc-950 border-zinc-800 text-zinc-300 hover:border-amber-500/50' : 'bg-stone-50 border-stone-200 text-stone-750 hover:border-amber-500'
-                        }`}
-                      >
-                        ⚡ Settle Instant Payout
+                        {isFaydaBiometricsVerified ? '✓ Verified (Score: 99)' : 'Verify Fayda Biometrics'}
                       </button>
                     </div>
                   </div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-
-          {/* 12. SUBS & VERIFICATIONS TAB */}
-          {activeTab === 'billing' && (
-            <motion.div
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="space-y-5 text-left font-sans"
-            >
-              {/* 12.A VENDOR SUBSCRIPTIONS */}
-              <div className="space-y-2">
-                <div>
-                  <h3 className="text-xs font-black uppercase text-amber-500">🏬 Merchant Store Subscriptions</h3>
-                  <p className="text-[9px] opacity-60">Upgrade your merchant tier to unlock lower checkout fees and video stream capacity</p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
-                  {vendorPlans.map((plan) => (
-                    <div 
-                      key={plan.name}
-                      onClick={() => {
-                        setActiveVendorSub(plan.name as any);
-                        alert(`Subscribed successfully to the ${plan.name} merchant tier.`);
-                        triggerPushNotification('🏬 Merchant Plan Upgraded!', `You are now on the Every-zone ${plan.name} subscription plan.`, '🏬', 'merchant');
-                      }}
-                      className={`p-3.5 rounded-2xl border text-center transition cursor-pointer flex flex-col justify-between h-[155px] ${
-                        activeVendorSub === plan.name
-                          ? 'border-amber-500 bg-amber-500/[0.03] scale-[1.02]'
-                          : (isDarkMode ? 'bg-zinc-90 w-100 bg-zinc-900 border-zinc-850 hover:bg-zinc-850' : 'bg-white border-stone-200 hover:bg-stone-50')
-                      }`}
-                    >
-                      <div className="space-y-1">
-                        <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded ${plan.badge}`}>
-                          {plan.name}
+                {/* AI Business Insights, Premium Club, Digital Gift Cards & Escrow Academy Subsystems */}
+                <AIPremGiftAcademy 
+                  isDarkMode={isDarkMode}
+                  triggerPushNotification={triggerPushNotification}
+                  lang={lang}
+                  walletBalance={walletBalance}
+                  setWalletBalance={setWalletBalance}
+                  isPremiumUser={isPremiumUser}
+                  setIsPremiumUser={setIsPremiumUser}
+                />
+              </motion.div>
+            )}
+
+            {/* ---------------------------------------------------- */}
+            {/* PILLAR 8: DIGITAL BUSINESS CARD */}
+            {/* ---------------------------------------------------- */}
+            {activeSuiteTab === 'card' && (
+              <motion.div
+                key="card"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="grid grid-cols-1 md:grid-cols-3 gap-6"
+              >
+                {/* Customizer */}
+                <div className={`p-5 rounded-3xl border space-y-4 text-left h-fit ${
+                  isDarkMode ? 'bg-zinc-950/40 border-zinc-900' : 'bg-white border-stone-200'
+                }`}>
+                  <h4 className="text-xs font-black uppercase text-amber-500">Customize Branding Profile</h4>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-bold text-stone-400">Card Theme</label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[
+                        { id: 'amber', color: 'bg-amber-500' },
+                        { id: 'emerald', color: 'bg-emerald-500' },
+                        { id: 'teal', color: 'bg-teal-500' },
+                        { id: 'rose', color: 'bg-rose-500' },
+                      ].map(t => (
+                        <button
+                          key={t.id}
+                          onClick={() => setCardTheme(t.id as any)}
+                          className={`h-8 rounded-lg ${t.color} border transition cursor-pointer ${
+                            cardTheme === t.id ? 'border-white scale-105 shadow' : 'border-transparent'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-bold text-stone-400">Enterprise Slogan</label>
+                    <input
+                      type="text"
+                      value={cardSlogan}
+                      onChange={(e) => setCardSlogan(e.target.value)}
+                      placeholder="Enter brand slogan..."
+                      className="w-full text-xs bg-black border border-zinc-800 rounded-lg px-3 py-2 text-stone-200 outline-none"
+                    />
+                  </div>
+
+                  <div className="w-full h-px bg-stone-850"></div>
+
+                  <button
+                    onClick={() => {
+                      triggerPushNotification('Business Card Saved', 'Branding details finalized and committed to vCard QR cache.', '📇', 'card');
+                    }}
+                    className="w-full py-2 bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 text-stone-200 text-xs font-bold rounded-xl cursor-pointer"
+                  >
+                    Commit Theme Configuration
+                  </button>
+                </div>
+
+                {/* Card Output Visual Block */}
+                <div className="md:col-span-2 flex flex-col justify-center items-center">
+                  <div className={`w-full max-w-lg rounded-3xl p-6 text-left relative overflow-hidden shadow-2xl transition border ${
+                    cardTheme === 'amber' ? 'bg-[#1a1202] border-amber-500/20' : 
+                    cardTheme === 'emerald' ? 'bg-[#021a0f] border-emerald-500/20' :
+                    cardTheme === 'teal' ? 'bg-[#02181a] border-teal-500/20' : 'bg-[#1a0208] border-rose-500/20'
+                  }`}>
+                    {/* Floating geometric ornaments */}
+                    <div className="absolute right-0 top-0 w-24 h-24 bg-white/5 rounded-bl-full" />
+                    
+                    <div className="flex justify-between items-start mb-6">
+                      <div>
+                        <span className="text-[8px] font-black uppercase tracking-widest bg-white/10 px-2 py-0.5 rounded font-mono text-white/90">
+                          EVERY-ZONE VERIFIED VENDOR
                         </span>
-                        <div className="font-mono font-black text-sm pt-1 text-stone-800 dark:text-zinc-100">{plan.price}</div>
-                        <p className="text-[9px] text-[#C5A059] font-bold">{plan.fee} escrow fee</p>
-                        <p className="text-[8px] opacity-60 leading-tight font-sans">{plan.live}</p>
+                        <h3 className="text-base font-black text-white mt-1.5">{userMetadata.name}</h3>
+                        <p className="text-[10.5px] text-white/60">Lead Craft &amp; Logistics Manager</p>
+                      </div>
+                      <span className="text-2xl">🌍</span>
+                    </div>
+
+                    <p className="text-xs text-white/80 italic leading-relaxed min-h-[36px] font-medium font-sans">
+                      "{cardSlogan}"
+                    </p>
+
+                    <div className="w-full h-px bg-white/10 my-4"></div>
+
+                    <div className="flex justify-between items-end">
+                      <div className="space-y-1 text-[9.5px] text-white/70 font-mono">
+                        <div className="flex items-center gap-1.5">
+                          <Phone size={10} className="text-white/40" />
+                          <span>{userMetadata.phone}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Mail size={10} className="text-white/40" />
+                          <span>{userMetadata.email}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <ShieldCheck size={10} className="text-white/40" />
+                          <span>Fayda ID: Verified Active</span>
+                        </div>
                       </div>
 
-                      <button
-                        className={`w-full py-1.5 text-[8.5px] font-black uppercase tracking-widest rounded-xl transition ${
-                          activeVendorSub === plan.name
-                            ? 'bg-amber-500 text-zinc-950 font-black'
-                            : (isDarkMode ? 'bg-zinc-950 text-zinc-300' : 'bg-stone-100 text-stone-700')
-                        }`}
-                      >
-                        {activeVendorSub === plan.name ? 'Active Plan ✓' : 'Upgrade'}
-                      </button>
+                      {/* Standard CSS simulated QR code */}
+                      <div className="bg-white p-1.5 rounded-lg border border-stone-200">
+                        <QrCode className="w-14 h-14 text-stone-900" />
+                      </div>
                     </div>
-                  ))}
-                </div>
-              </div>
+                  </div>
 
-              {/* 12.B USER VERIFICATION LEVEL */}
-              <div className="space-y-2 pt-2 border-t border-stone-200/50 dark:border-zinc-850">
-                <div>
-                  <h3 className="text-xs font-black uppercase text-amber-500">👤 Cognitive User Verification Badges</h3>
-                  <p className="text-[9px] opacity-60">Unlock higher overdraft wallets, secure property visits, and fast passport services via ID audits</p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
-                  {verificationLevels.map((level) => (
-                    <div 
-                      key={level.name}
+                  <div className="flex gap-2 mt-4 w-full max-w-lg text-center text-[10px]">
+                    <button
+                      onClick={() => alert('vCard .vcf file downloading sequence activated.')}
+                      className="flex-1 py-2.5 bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 text-stone-200 font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Download size={11} />
+                      <span>Download vCard Contact</span>
+                    </button>
+                    <button
                       onClick={() => {
-                        setActiveUserVerif(level.name as any);
-                        alert(`Biometric audit passed successfully! Your profile is verified at the "${level.name}" level.`);
-                        triggerPushNotification('👤 Identity Verified!', `Your profile has been upgraded to ${level.name} status.`, '👤', 'verification');
+                        navigator.clipboard.writeText(`https://everyzone.et/share/henok_tadesse`);
+                        triggerPushNotification('Link Copied', 'Personal profile link copied to clipboard.', '🔗', 'card');
                       }}
-                      className={`p-3.5 rounded-2xl border text-center transition cursor-pointer flex flex-col justify-between h-[155px] ${
-                        activeUserVerif === level.name
-                          ? 'border-emerald-500 bg-emerald-500/[0.03] scale-[1.02]'
-                          : (isDarkMode ? 'bg-zinc-90 w-100 bg-zinc-900 border-zinc-850 hover:bg-zinc-850' : 'bg-white border-stone-200 hover:bg-stone-50')
+                      className="flex-1 py-2.5 bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 text-stone-200 font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Share2 size={11} />
+                      <span>Copy Card Link</span>
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* ---------------------------------------------------- */}
+            {/* PILLAR 9: COMMUNITY HUBS */}
+            {/* ---------------------------------------------------- */}
+            {activeSuiteTab === 'community' && (
+              <motion.div
+                key="community"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="h-[58vh] flex gap-4 overflow-hidden"
+              >
+                {/* Guild selectors */}
+                <div className={`w-1/4 rounded-3xl p-3 flex flex-col gap-1.5 border ${
+                  isDarkMode ? 'bg-zinc-950/40 border-zinc-900' : 'bg-white border-stone-200'
+                }`}>
+                  <span className="text-[9px] font-black uppercase text-stone-500 tracking-wider p-1 text-left">Community Channels</span>
+                  {[
+                    { id: 'guild', label: '🏪 Vendors Guild', desc: 'B2B Trade Network' },
+                    { id: 'club', label: '🛒 Customer Club', desc: 'General Swapping' },
+                    { id: 'houses', label: '🏠 House Hunters', desc: 'Rentals & Sales Chat' },
+                    { id: 'jobs', label: '💼 Job Seekers', desc: 'Overseas Contract Tips' },
+                  ].map(g => (
+                    <button
+                      key={g.id}
+                      onClick={() => setSelectedCommunity(g.id as any)}
+                      className={`p-3 rounded-2xl text-left transition cursor-pointer ${
+                        selectedCommunity === g.id
+                          ? 'bg-amber-500/10 border border-amber-500/25 text-amber-500 font-black'
+                          : isDarkMode ? 'hover:bg-zinc-900 text-stone-400' : 'hover:bg-stone-100 text-stone-600'
                       }`}
                     >
-                      <div className="space-y-1">
-                        <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${
-                          activeUserVerif === level.name ? 'bg-emerald-500 text-white' : 'bg-stone-500/20 text-stone-400'
-                        }`}>
-                          {level.name}
-                        </span>
-                        <div className="text-[8px] text-stone-450 pt-1 font-mono uppercase font-black">Requirements</div>
-                        <p className="text-[9px] font-bold text-stone-800 dark:text-zinc-100 leading-tight font-sans">{level.req}</p>
-                        <p className="text-[8px] text-emerald-500 leading-tight font-sans mt-1">Perk: {level.perks}</p>
-                      </div>
-
-                      <button
-                        className={`w-full py-1.5 text-[8.5px] font-black uppercase tracking-widest rounded-xl transition ${
-                          activeUserVerif === level.name
-                            ? 'bg-emerald-500 text-white font-black'
-                            : (isDarkMode ? 'bg-zinc-950 text-zinc-300' : 'bg-stone-100 text-stone-700')
-                        }`}
-                      >
-                        {activeUserVerif === level.name ? 'Verified ✓' : 'Authenticate'}
-                      </button>
-                    </div>
+                      <span className="text-xs font-bold block">{g.label}</span>
+                      <span className="text-[9px] opacity-70 block font-normal mt-0.5">{g.desc}</span>
+                    </button>
                   ))}
                 </div>
-              </div>
-            </motion.div>
-          )}
 
-        </AnimatePresence>
+                {/* Channel Thread chat pane */}
+                <div className={`flex-1 rounded-3xl p-4 flex flex-col border ${
+                  isDarkMode ? 'bg-zinc-950/40 border-zinc-900' : 'bg-white border-stone-200'
+                }`}>
+                  <div className="border-b pb-3 mb-3 text-left">
+                    <h3 className="text-xs font-black uppercase text-amber-500">
+                      #{selectedCommunity.toUpperCase()} CORE CHANNEL
+                    </h3>
+                    <p className="text-[9px] text-stone-400">Encrypted community forum, compliant with national security standards.</p>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto space-y-2.5 text-left text-xs pr-1">
+                    {(groupMessages[selectedCommunity] || []).map((msg, i) => (
+                      <div key={i} className="bg-black/25 p-3 rounded-2xl border border-zinc-850/50">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="font-extrabold text-amber-400 text-[10px]">{msg.author}</span>
+                          <span className="text-[8px] text-stone-500 font-mono">{msg.time}</span>
+                        </div>
+                        <p className="text-stone-300 leading-relaxed font-sans">{msg.text}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      if (!typedGroupMsg.trim()) return;
+                      const msg = { author: 'Henok Tadesse', text: typedGroupMsg, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
+                      setGroupMessages(prev => ({ ...prev, [selectedCommunity]: [...(prev[selectedCommunity] || []), msg] }));
+                      setTypedGroupMsg('');
+                      triggerPushNotification('Community Broadcast', 'Dispatched message block to active chatroom routing.', '👥', 'community');
+                    }}
+                    className="mt-3 flex gap-2 pt-3 border-t"
+                  >
+                    <input
+                      type="text"
+                      value={typedGroupMsg}
+                      onChange={(e) => setTypedGroupMsg(e.target.value)}
+                      placeholder={`Send message to #${selectedCommunity}...`}
+                      className="flex-1 text-xs bg-black border border-zinc-800 rounded-xl px-4 py-2.5 outline-none focus:border-amber-500/40 text-stone-200"
+                    />
+                    <button type="submit" className="bg-amber-500 hover:bg-amber-600 text-stone-950 font-black px-4 py-2.5 rounded-xl text-xs flex items-center gap-1.5 cursor-pointer">
+                      <Send size={12} />
+                      <span>Send</span>
+                    </button>
+                  </form>
+                </div>
+              </motion.div>
+            )}
+
+            {/* ---------------------------------------------------- */}
+            {/* PILLAR 10: ENTERPRISE ADMIN ENGINE */}
+            {/* ---------------------------------------------------- */}
+            {activeSuiteTab === 'admin' && (
+              <motion.div
+                key="admin"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="space-y-6 text-left"
+              >
+                {/* Stats Dashboard charts row */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                  {/* Revenue metrics chart panel */}
+                  <div className={`p-4 rounded-3xl border h-48 flex flex-col justify-between ${
+                    isDarkMode ? 'bg-zinc-950/40 border-zinc-900' : 'bg-white border-stone-200'
+                  }`}>
+                    <div>
+                      <span className="text-[8px] font-black uppercase text-amber-500 font-mono">Commission Revenue</span>
+                      <h4 className="text-xs font-black">Marketplace commissions: 3-8%</h4>
+                    </div>
+                    {/* Simulated Recharts widget */}
+                    <div className="h-28 w-full flex items-end gap-2 pt-2">
+                      {[32, 45, 62, 54, 78, 92, 110].map((h, i) => (
+                        <div key={i} className="flex-1 bg-gradient-to-t from-amber-600 to-amber-500 rounded-lg group relative cursor-pointer" style={{ height: `${h}%` }}>
+                          <span className="absolute -top-6 left-1/2 -translate-x-1/2 bg-black text-[7.5px] px-1 rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap font-mono text-amber-400">
+                            {(h * 1500).toLocaleString()} ETB
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* API performance latency log */}
+                  <div className={`p-4 rounded-3xl border h-48 flex flex-col justify-between ${
+                    isDarkMode ? 'bg-zinc-950/40 border-zinc-900' : 'bg-white border-stone-200'
+                      }`}>
+                    <div>
+                      <span className="text-[8px] font-black uppercase text-emerald-400 font-mono">Active API Node latency</span>
+                      <h4 className="text-xs font-black">Integrated Payment Settlement Webhooks</h4>
+                    </div>
+
+                    <div className="h-28 w-full bg-black/60 border border-zinc-850 rounded-2xl p-2 font-mono text-[7.5px] text-emerald-400 space-y-1 overflow-y-auto">
+                      {apiLogs.map((log, i) => (
+                        <div key={i} className="flex justify-between">
+                          <span>[{log.time}] {log.node}</span>
+                          <span className="font-bold text-amber-500">{log.latency}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* System health diagnostics parameters */}
+                  <div className={`p-4 rounded-3xl border h-48 flex flex-col justify-between ${
+                    isDarkMode ? 'bg-zinc-950/40 border-zinc-900' : 'bg-white border-stone-200'
+                  }`}>
+                    <div>
+                      <span className="text-[8px] font-black uppercase text-[#C5A059] font-mono">Server Diagnostics</span>
+                      <h4 className="text-xs font-black">Nginx load balancers operational</h4>
+                    </div>
+
+                    <div className="space-y-1.5 text-[9.5px] leading-relaxed mt-2 font-mono">
+                      <div className="flex justify-between">
+                        <span className="opacity-70 font-sans">CPU Utilization:</span>
+                        <span className="text-emerald-500 font-bold">14.2%</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="opacity-70 font-sans">Redis Memory Caching:</span>
+                        <span className="text-emerald-500 font-bold">542MB / 2.0GB</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="opacity-70 font-sans">Spanner Cluster health:</span>
+                        <span className="text-emerald-500 font-bold">🟢 Secure (99.98% uptime)</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Flagged user controls and fraud dashboard */}
+                <div className={`p-5 rounded-3xl border space-y-4 ${
+                  isDarkMode ? 'bg-zinc-950/40 border-zinc-900' : 'bg-white border-stone-200'
+                }`}>
+                  <div className="flex justify-between items-center border-b border-zinc-850/60 pb-3">
+                    <div>
+                      <span className="text-[9px] font-black text-rose-500 uppercase tracking-widest block font-mono">
+                        🛡️ AI SYSTEM RISK CONTROL
+                      </span>
+                      <h3 className="text-xs font-black uppercase">Fraud Velocity Spikes and Account Holds</h3>
+                    </div>
+                    
+                    <button
+                      onClick={() => {
+                        setApiLogs(prev => [{ time: new Date().toLocaleTimeString(), node: 'RECACHE_FLUSH', status: 200, latency: '42ms' }, ...prev]);
+                        triggerPushNotification('Nginx Cache Flushed', 'Flushed Redis caching proxy layers successfully.', '⚙️', 'admin');
+                      }}
+                      className="bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 text-stone-200 text-[10px] font-black uppercase px-3 py-1.5 rounded-xl cursor-pointer"
+                    >
+                      Flush proxy cache layers
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    {flaggedUsers.map(user => (
+                      <div key={user.id} className="p-3 bg-black/20 rounded-2xl border border-zinc-850/50 flex items-center justify-between">
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-stone-200">{user.name}</span>
+                            <span className={`text-[8px] font-mono font-bold px-1.5 rounded ${
+                              user.frozen ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                            }`}>
+                              {user.status}
+                            </span>
+                          </div>
+                          <p className="text-[9.5px] text-stone-500 mt-1 font-mono">{user.reason}</p>
+                        </div>
+
+                        <button
+                          onClick={() => {
+                            setFlaggedUsers(prev => prev.map(u => u.id === user.id ? { ...u, frozen: !u.frozen, status: !u.frozen ? 'Frozen' : 'Review Needed' } : u));
+                            triggerPushNotification(
+                              user.frozen ? 'User Thawed Successfully' : 'Account Frozen Safely',
+                              `${user.name} transactional lock toggled.`,
+                              '🛡️',
+                              'admin'
+                            );
+                          }}
+                          className={`text-[9.5px] font-black uppercase px-3 py-1.5 rounded-xl cursor-pointer transition ${
+                            user.frozen
+                              ? 'bg-emerald-500 hover:bg-emerald-600 text-stone-950 font-black'
+                              : 'bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30'
+                          }`}
+                        >
+                          {user.frozen ? 'Unfreeze' : 'Freeze'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Modular Plugin Registry and Enterprise Architecture System Layer */}
+                <PluginArchHub 
+                  isDarkMode={isDarkMode}
+                  triggerPushNotification={triggerPushNotification}
+                  lang={lang}
+                />
+              </motion.div>
+            )}
+
+            {/* ---------------------------------------------------- */}
+            {/* PILLAR 11: PHASE 9 WORLD-CLASS SUPER APP FEATURES */}
+            {/* ---------------------------------------------------- */}
+            {activeSuiteTab === 'phase9' && (
+              <motion.div
+                key="phase9"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+              >
+                <Phase9SuperAppSuite 
+                  isDarkMode={isDarkMode}
+                  triggerPushNotification={triggerPushNotification}
+                  lang={lang}
+                />
+              </motion.div>
+            )}
+
+          </AnimatePresence>
+        </div>
+
       </div>
     </div>
   );

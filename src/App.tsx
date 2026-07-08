@@ -6,7 +6,7 @@ import {
   RefreshCw, Award, BookOpen, UserCheck, Flame, ShieldAlert, Sparkle, FileText,
   MessageCircle, Bookmark, Settings, Phone, Send, X, Volume2, Mic, MicOff, VolumeX, Share2,
   Cpu, Database, TrendingUp, History, SlidersHorizontal, Filter, Check, Camera, Ticket, QrCode,
-  Moon, Sun, Globe
+  Moon, Sun, Globe, Shirt, Laptop, Smartphone, Coffee, Car, ArrowRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { SimulatedVideoPlayer } from './components/SimulatedVideoPlayer';
@@ -18,6 +18,7 @@ import { SuperAdminControl } from './components/SuperAdminControl';
 import { AdminDashboard } from './modules/admin/AdminDashboard';
 import { ChatSystem } from './components/ChatSystem';
 import { NotificationCenter } from './components/NotificationCenter';
+import { VendorStorefront } from './components/VendorStorefront';
 import { WalletPaymentsHub } from './components/WalletPaymentsHub';
 import { EthiopiaPassportHub } from './components/EthiopiaPassportHub';
 import { OnboardingWelcomeCarousel } from './components/OnboardingWelcomeCarousel';
@@ -34,6 +35,7 @@ import { MarketplaceHub } from './modules/marketplace/MarketplaceHub';
 import { ProductDetailModal } from './modules/marketplace/products/ProductDetailModal';
 import OverseasEmploymentModule from './components/OverseasEmploymentModule';
 import { VendorDashboardHub } from './components/VendorDashboardHub';
+import { RealEstateAgencyDashboard } from './components/RealEstateAgencyDashboard';
 import { OrderTrackingHub } from './components/OrderTrackingHub';
 import { WishlistCollectionsHub } from './components/WishlistCollectionsHub';
 import { V9SuperSuite } from './components/V9SuperSuite';
@@ -41,6 +43,7 @@ import { EveryzoneMonetizationEngine } from './components/EveryzoneMonetizationE
 import { SettingsScreen } from './screens/SettingsScreen';
 import { HousesScreen } from './screens/HousesScreen';
 import { AgenciesScreen } from './screens/AgenciesScreen';
+import { PropertyDetailView } from './components/PropertyDetailView';
 
 
 // ==========================================
@@ -1196,7 +1199,7 @@ export default function App() {
     return saved ? parseFloat(saved) : 6800;
   });
 
-  const [activeTab, setActiveTab] = useState<'shop' | 'houses' | 'agencies' | 'lottery' | 'matchmaking' | 'settings'>('shop');
+  const [activeTab, setActiveTab] = useState<'shop' | 'houses' | 'agencies' | 'matchmaking' | 'settings'>('shop');
   const [activeDevModule, setActiveDevModule] = useState<'none' | 'ai' | 'logistics' | 'adv' | 'admin' | 'wallet' | 'passport' | 'devops' | 'sre' | 'vendor_dashboard' | 'order_tracking' | 'wishlist' | 'v9_suite' | 'monetization'>('none');
 
   // --- EMERGENCY BANNER CONFIGURATION STATE ---
@@ -1335,6 +1338,19 @@ export default function App() {
   const [imageSearchLoading, setImageSearchLoading] = useState(false);
   const [imageSearchExplanation, setImageSearchExplanation] = useState<{en: string, am: string} | null>(null);
 
+  // Security & Privacy States
+  const [isTwoFactor, setIsTwoFactor] = useState<boolean>(() => {
+    return localStorage.getItem('ez_security_2fa') === 'true';
+  });
+  const [isPrivateProfile, setIsPrivateProfile] = useState<boolean>(() => {
+    return localStorage.getItem('ez_security_private') === 'true';
+  });
+  const [blockedUsers, setBlockedUsers] = useState<string[]>(['Unverified Buyer #102', 'Suspicious Vendor #941']);
+
+  const [isVoiceSearchListening, setIsVoiceSearchListening] = useState(false);
+  const [voiceSearchTranscript, setVoiceSearchTranscript] = useState('');
+  const imageSearchInputRef = React.useRef<HTMLInputElement>(null);
+
   const handleImageSearch = async (base64Image: string) => {
     setImageSearchLoading(true);
     setImageSearchExplanation(null);
@@ -1354,6 +1370,7 @@ export default function App() {
         setGlobalSearchQuery(""); // Clear standard search string
         setIsGlobalSearchOpen(true); // Ensure unified search index is open
         setIsImageSearchOpen(false); // Close image search panel
+        setIsQrSearchOpen(false); // Close unified modal
       } else {
         alert("Image search failed: " + (data.error || "Unknown error"));
       }
@@ -1362,6 +1379,60 @@ export default function App() {
       alert("Error sending image search request.");
     } finally {
       setImageSearchLoading(false);
+    }
+  };
+
+  const triggerVoiceSearch = () => {
+    const SpeechClass = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechClass) {
+      setIsVoiceSearchListening(true);
+      setVoiceSearchTranscript(lang === 'am' ? "ማይክሮፎን ዝግጁ ነው..." : "Microphone ready...");
+      return;
+    }
+    try {
+      const rec = new SpeechClass();
+      rec.lang = lang === 'am' ? 'am-ET' : 'en-US';
+      rec.interimResults = false;
+      rec.maxAlternatives = 1;
+      rec.onstart = () => {
+        setIsVoiceSearchListening(true);
+        setVoiceSearchTranscript(lang === 'am' ? "እያዳመጥኩ ነው... ይናገሩ" : "Listening... Please speak");
+      };
+      rec.onerror = (e: any) => {
+        console.error("Voice search error", e);
+        setVoiceSearchTranscript(lang === 'am' ? "ድምፅ ማወቅ አልተቻለም" : "Could not recognize voice");
+      };
+      rec.onend = () => {
+        setTimeout(() => {
+          setIsVoiceSearchListening(false);
+        }, 1500);
+      };
+      rec.onresult = (e: any) => {
+        const text = e.results[0][0].transcript;
+        if (text) {
+          setVoiceSearchTranscript(text);
+          setGlobalSearchQuery(text);
+          fetchSearchResults(text);
+        }
+      };
+      rec.start();
+    } catch (e) {
+      console.error(e);
+      setIsVoiceSearchListening(true);
+      setVoiceSearchTranscript(lang === 'am' ? "ማይክሮፎን ተነስቷል" : "Microphone active");
+    }
+  };
+
+  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          handleImageSearch(reader.result);
+        }
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -1635,6 +1706,9 @@ export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     return localStorage.getItem('ez_authenticated') === 'true';
   });
+  const [userRole, setUserRole] = useState<'USER' | 'VENDOR' | 'REAL_ESTATE' | 'OVERSEAS' | 'SUPER_ADMIN'>(() => {
+    return (localStorage.getItem('ez_user_role') as any) || 'USER';
+  });
   const [biometricsEnabled, setBiometricsEnabled] = useState<boolean>(() => {
     return localStorage.getItem('ez_biometrics_enabled') === 'true';
   });
@@ -1796,6 +1870,65 @@ export default function App() {
       window.removeEventListener('hashchange', parseDeepLink);
     };
   }, []);
+
+  // --- Track and save recently viewed products & listings ---
+  useEffect(() => {
+    if (selectedListing) {
+      try {
+        const stored = localStorage.getItem('ez_recently_viewed_v3');
+        const items = stored ? JSON.parse(stored) : [];
+        const filtered = items.filter((x: any) => x.id !== selectedListing.id);
+        const newItem = {
+          id: selectedListing.id,
+          type: selectedListing.category, // 'houses', 'agencies', etc.
+          title: selectedListing.title,
+          titleAm: selectedListing.titleAm,
+          price: selectedListing.price,
+          priceAm: selectedListing.priceAm,
+          image: selectedListing.image,
+          location: selectedListing.location,
+          locationAm: selectedListing.locationAm,
+          vendorName: selectedListing.vendorName,
+          timestamp: Date.now(),
+          raw: selectedListing
+        };
+        const updated = [newItem, ...filtered].slice(0, 10);
+        localStorage.setItem('ez_recently_viewed_v3', JSON.stringify(updated));
+        window.dispatchEvent(new Event('ez_recently_viewed_updated'));
+      } catch (e) {
+        console.error("Error updating recently viewed listing:", e);
+      }
+    }
+  }, [selectedListing]);
+
+  useEffect(() => {
+    if (selectedMarketplaceProduct) {
+      try {
+        const stored = localStorage.getItem('ez_recently_viewed_v3');
+        const items = stored ? JSON.parse(stored) : [];
+        const filtered = items.filter((x: any) => x.id !== selectedMarketplaceProduct.id);
+        const newItem = {
+          id: selectedMarketplaceProduct.id,
+          type: 'shop',
+          title: selectedMarketplaceProduct.title,
+          titleAm: selectedMarketplaceProduct.titleAm,
+          price: `${selectedMarketplaceProduct.price} ETB`,
+          priceAm: `${selectedMarketplaceProduct.price} ብር`,
+          image: selectedMarketplaceProduct.images?.[0]?.imageUrl || selectedMarketplaceProduct.image,
+          location: selectedMarketplaceProduct.vendorName || 'Bole Wear',
+          locationAm: selectedMarketplaceProduct.vendorNameAm || selectedMarketplaceProduct.vendorName || 'ቦሌ',
+          vendorName: selectedMarketplaceProduct.vendorName || 'Bole Wear',
+          timestamp: Date.now(),
+          raw: selectedMarketplaceProduct
+        };
+        const updated = [newItem, ...filtered].slice(0, 10);
+        localStorage.setItem('ez_recently_viewed_v3', JSON.stringify(updated));
+        window.dispatchEvent(new Event('ez_recently_viewed_updated'));
+      } catch (e) {
+        console.error("Error updating recently viewed product:", e);
+      }
+    }
+  }, [selectedMarketplaceProduct]);
 
   // Scan History list state
   const [scanHistory, setScanHistory] = useState<any[]>([]);
@@ -2179,7 +2312,7 @@ export default function App() {
   const [commentTextInputs, setCommentTextInputs] = useState<{ [videoId: string]: string }>({});
 
   // Active sub-tab inside Vendor Profile
-  const [vendorProfileTab, setVendorProfileTab] = useState<'products' | 'listings' | 'services' | 'videos' | 'reviews' | 'about' | 'policies'>('products');
+  const [vendorProfileTab, setVendorProfileTab] = useState<'all' | 'products' | 'listings' | 'services' | 'videos' | 'posts' | 'reviews' | 'about' | 'policies'>('all');
   const [vendorStoreSearch, setVendorStoreSearch] = useState('');
   const [vendorStoreSort, setVendorStoreSort] = useState<'newest' | 'popular' | 'rating' | 'priceAsc' | 'priceDesc'>('newest');
   const [servicesSubTab, setServicesSubTab] = useState<'products' | 'services' | 'packages'>('products');
@@ -3653,7 +3786,10 @@ Thank you for supporting digital commerce in Ethiopia!
               lang={lang}
               setLang={setLang}
               isDarkMode={isDarkMode}
-              onSuccess={() => setIsAuthenticated(true)}
+              onSuccess={() => {
+                setIsAuthenticated(true);
+                setUserRole((localStorage.getItem('ez_user_role') as any) || 'USER');
+              }}
             />
           )}
         </AnimatePresence>
@@ -3682,7 +3818,83 @@ Thank you for supporting digital commerce in Ethiopia!
 
 
         {/* MAIN SCROLLABLE CONTAINER (Wraps header, dev cockpit, and active core stages together for unified mobile-optimized scrolling) */}
-        <div className="flex-1 overflow-y-auto flex flex-col" id="main-scroll-container">
+        <div className={`flex-1 overflow-y-auto flex flex-col ${activeDevModule !== 'none' ? 'hidden' : ''}`} id="main-scroll-container">
+
+          {/* SECURE ROLE-BASED WORKSPACE QUICK LINK LAUNCHER BAR */}
+          {isAuthenticated && (
+            <div className={`px-4 py-2 text-xs flex flex-wrap items-center justify-between gap-2 border-b transition-colors relative z-20 ${
+              userRole === 'SUPER_ADMIN' ? (isDarkMode ? 'bg-rose-950/40 border-rose-900 text-rose-200' : 'bg-rose-50 border-rose-200 text-rose-800') :
+              userRole === 'VENDOR' ? (isDarkMode ? 'bg-amber-950/40 border-amber-900 text-amber-200' : 'bg-amber-50 border-amber-200 text-amber-800') :
+              userRole === 'REAL_ESTATE' ? (isDarkMode ? 'bg-blue-950/40 border-blue-900 text-blue-200' : 'bg-blue-50 border-blue-200 text-blue-800') :
+              userRole === 'OVERSEAS' ? (isDarkMode ? 'bg-sky-950/40 border-sky-900 text-sky-200' : 'bg-sky-50 border-sky-200 text-sky-800') :
+              (isDarkMode ? 'bg-zinc-900 border-zinc-800 text-zinc-300' : 'bg-stone-50 border-stone-200 text-stone-700')
+            }`}>
+              <div className="flex items-center gap-2">
+                <span className="text-base">
+                  {userRole === 'SUPER_ADMIN' ? '👮' :
+                   userRole === 'VENDOR' ? '🏪' :
+                   userRole === 'REAL_ESTATE' ? '🏡' :
+                   userRole === 'OVERSEAS' ? '✈️' : '👥'}
+                </span>
+                <div>
+                  <span className="font-black uppercase tracking-wider text-[9.5px]">
+                    {userRole === 'SUPER_ADMIN' ? 'Super Admin Console' :
+                     userRole === 'VENDOR' ? 'Retail Vendor Console' :
+                     userRole === 'REAL_ESTATE' ? 'Real Estate Agency Console' :
+                     userRole === 'OVERSEAS' ? 'Overseas Employment Agency Console' :
+                     'Citizen Customer Profile'}
+                  </span>
+                  <span className="text-[9px] block opacity-80 leading-snug">
+                    {userRole === 'SUPER_ADMIN' ? 'Full platform administration & security audit logs' :
+                     userRole === 'VENDOR' ? 'Manage products, stock, sales & instant withdrawals' :
+                     userRole === 'REAL_ESTATE' ? 'Post properties, manage tenant tours & commission ledger' :
+                     userRole === 'OVERSEAS' ? 'Post certified overseas jobs, CV screening & applications' :
+                     'Shop items, buy/rent properties, apply for jobs & matchmaking'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {userRole !== 'USER' ? (
+                  <button
+                    id="launcher-workspace-btn"
+                    onClick={() => {
+                      if (userRole === 'SUPER_ADMIN') {
+                        setActiveDevModule('admin');
+                      } else if (userRole === 'VENDOR') {
+                        setActiveDevModule('vendor_dashboard');
+                      } else if (userRole === 'REAL_ESTATE') {
+                        setActiveDevModule('real_estate_dashboard' as any);
+                      } else if (userRole === 'OVERSEAS') {
+                        setActiveTab('agencies');
+                        // Override state to trigger agency view
+                        localStorage.setItem('ez_overseas_role_override', 'agency');
+                        window.dispatchEvent(new Event('ez_overseas_role_change'));
+                      }
+                    }}
+                    className={`px-3 py-1.5 rounded-xl font-black text-[10px] uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer hover:scale-105 active:scale-95 shadow-xs ${
+                      userRole === 'SUPER_ADMIN' ? 'bg-rose-600 hover:bg-rose-500 text-white' :
+                      userRole === 'VENDOR' ? 'bg-amber-500 text-zinc-950 hover:bg-amber-400' :
+                      userRole === 'REAL_ESTATE' ? 'bg-blue-600 hover:bg-blue-500 text-white' :
+                      'bg-sky-600 hover:bg-sky-500 text-white'
+                    }`}
+                  >
+                    <span>Launch Workspace</span>
+                    <ArrowRight size={10} />
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setActiveTab('settings');
+                    }}
+                    className="px-2.5 py-1 bg-stone-200 dark:bg-zinc-800 hover:opacity-90 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer"
+                  >
+                    Switch Role
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* COMPREHENSIVE GLOBAL HERO APP HOOK (Shows current wallet, title, and search) */}
           <header className={`p-4 border-b shrink-0 shadow-sm animate-fade-in transition-colors duration-300 ${isDarkMode ? 'bg-zinc-900 border-zinc-800 text-zinc-100' : 'bg-white border-stone-200 text-[#1A1A1A]'}`}>
@@ -3695,78 +3907,33 @@ Thank you for supporting digital commerce in Ethiopia!
                 referrerPolicy="no-referrer"
               />
               <div>
-                <div className="text-[9px] uppercase tracking-widest font-black flex items-center gap-1 select-none text-[#C5A059]">
-                  <Sparkles size={10} className="text-[#C5A059] animate-spin" /> {t('appSub')}
-                </div>
-                <h1 className={`text-base font-bold tracking-tight flex items-baseline gap-1 ${isDarkMode ? 'text-amber-400' : 'text-[#1E3A1A]'}`}>
-                  Every-zone <span className={`text-[9px] font-medium font-serif translate-y-[-1px] ${isDarkMode ? 'text-zinc-500' : 'text-stone-400'}`}>ኤቭሪ-ዞን</span>
-                  <span className="ml-1.5 text-[8px] bg-red-100 text-red-700 px-1 py-0.5 rounded font-extrabold uppercase tracking-widest leading-none">BETA v1.0.4</span>
+                <h1 className={`text-xl sm:text-2xl font-black tracking-tight whitespace-nowrap ${isDarkMode ? 'text-amber-400' : 'text-[#1E3A1A]'}`}>
+                  Every-Zone
                 </h1>
               </div>
             </div>
 
-            {/* LIVE WALLET SYSTEM HEADER CARD WITH EXTENDED LANGUAGE SWITCHER DROPDOWN */}
+            {/* LIVE WALLET & MESSENGER SYSTEM */}
             <div className="flex flex-col items-end">
-              <div className="flex items-center gap-1.5">
-                {/* Notification Dropdown Center removed per request */}
-
-                {/* Secured Escrow Chat Trigger */}
+              <div className="flex items-center gap-2">
+                {/* Secured Escrow Chat Trigger - Every Zone Messenger */}
                 <button
                   type="button"
                   onClick={() => setIsChatOpen(!isChatOpen)}
-                  title={lang === 'en' ? "Secure Escrow Messenger" : "የተጠበቀ የመልእክት ማዕከል"}
-                  className={`p-1.5 rounded-xl border flex items-center justify-center transition-all cursor-pointer ${
+                  title={lang === 'en' ? "Every Zone Messenger" : "ኤቭሪ ዞን መልእክተኛ"}
+                  className={`rounded-2xl border flex items-center justify-center transition-all cursor-pointer ${
                     isChatOpen 
-                      ? 'bg-amber-500 border-amber-600 text-white animate-pulse scale-105' 
-                      : (isDarkMode ? 'bg-zinc-900 border-zinc-800 text-amber-400 hover:bg-zinc-850' : 'bg-[#1E3A1A]/10 border-stone-200 text-[#1E3A1A] hover:bg-[#1E3A1A]/15')
+                      ? 'px-3 py-1.5 gap-1.5 bg-amber-500 border-amber-600 text-white animate-pulse scale-105 text-xs font-black' 
+                      : (isDarkMode ? 'p-2 bg-zinc-900 border-zinc-800 text-amber-400 hover:bg-zinc-850' : 'p-2 bg-[#1E3A1A]/10 border-stone-200 text-[#1E3A1A] hover:bg-[#1E3A1A]/15')
                   }`}
                 >
-                  <MessageCircle size={13} />
+                  <MessageCircle size={15} />
+                  {isChatOpen && (
+                    <span className="text-[10px] font-bold uppercase tracking-wider">Every Zone Messenger</span>
+                  )}
                 </button>
 
-                {/* Audio Guide Synthesis Trigger */}
-                <button
-                  type="button"
-                  onClick={handleVoiceWelcome}
-                  title={lang === 'en' ? "Play/Stop Voice Guide Assistant" : "የድምፅ ረዳት ይጫወቱ ወይም ያቁሙ"}
-                  className={`p-1.5 rounded-xl border flex items-center justify-center transition-all cursor-pointer ${
-                    isPlayingVoice 
-                      ? 'bg-emerald-500 border-emerald-600 text-white animate-pulse scale-105' 
-                      : (isDarkMode ? 'bg-zinc-900 border-zinc-800 text-amber-400 hover:bg-zinc-850' : 'bg-[#1E3A1A]/10 border-stone-200 text-[#1E3A1A] hover:bg-[#1E3A1A]/15')
-                  }`}
-                >
-                  <Volume2 size={13} className={isPlayingVoice ? "animate-bounce" : ""} />
-                </button>
-
-                <div className="relative">
-                  <select 
-                    value={lang}
-                    onChange={(e) => setLang(e.target.value)}
-                    className={`border text-[10px] font-extrabold pl-2 pr-6 py-1 rounded-xl transition-all cursor-pointer relative appearance-none outline-none ${
-                      isDarkMode 
-                        ? 'bg-zinc-900 border-amber-500/30 text-amber-400 hover:bg-zinc-800' 
-                        : 'bg-amber-500/10 border-amber-500/30 text-amber-900 hover:bg-amber-500/20'
-                    }`}
-                    style={{ 
-                      backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path fill='%23C5A059' d='M0,2 L6,8 L12,2 Z'/></svg>")`, 
-                      backgroundPosition: 'right 6px center', 
-                      backgroundRepeat: 'no-repeat', 
-                      backgroundSize: '8px 5px' 
-                    }}
-                    title="Select Language / ቋንቋ ይምረጡ"
-                  >
-                    <option value="en" className={isDarkMode ? 'bg-zinc-900 text-white' : 'bg-white text-stone-900'}>EN (English)</option>
-                    <option value="am" className={isDarkMode ? 'bg-zinc-900 text-white' : 'bg-white text-stone-900'}>አማ (አማርኛ)</option>
-                    <option value="ti" className={isDarkMode ? 'bg-zinc-900 text-white' : 'bg-white text-stone-900'}>ትግ (ትግርኛ)</option>
-                    <option value="om" className={isDarkMode ? 'bg-zinc-900 text-white' : 'bg-white text-stone-900'}>OM (Oromoo)</option>
-                    <option value="so" className={isDarkMode ? 'bg-zinc-900 text-white' : 'bg-white text-stone-900'}>SO (Somali)</option>
-                    <option value="ar" className={isDarkMode ? 'bg-zinc-900 text-white' : 'bg-white text-stone-900'}>AR (العربية)</option>
-                    <option value="fr" className={isDarkMode ? 'bg-zinc-900 text-white' : 'bg-white text-stone-900'}>FR (Français)</option>
-                    <option value="es" className={isDarkMode ? 'bg-zinc-900 text-white' : 'bg-white text-stone-900'}>ES (Español)</option>
-                    <option value="sw" className={isDarkMode ? 'bg-zinc-900 text-white' : 'bg-white text-stone-900'}>SW (Swahili)</option>
-                    <option value="de" className={isDarkMode ? 'bg-zinc-900 text-white' : 'bg-white text-stone-900'}>DE (Deutsch)</option>
-                  </select>
-                </div>
+                {/* የብር Wallet */}
                 <div 
                   id="wallet_header_hud"
                   onClick={() => setIsWalletSheetOpen(true)}
@@ -3799,11 +3966,9 @@ Thank you for supporting digital commerce in Ethiopia!
                     ? t('searchPlaceholderHouses') 
                     : activeTab === 'agencies' 
                       ? t('searchPlaceholderAgencies') 
-                      : activeTab === 'lottery'
-                        ? "Search active Lotteries & Raffles..."
-                        : activeTab === 'matchmaking'
-                          ? "Search Matchmaking Profiles..."
-                          : t('searchPlaceholderPassport')
+                      : activeTab === 'matchmaking'
+                        ? "Search Matchmaking Profiles..."
+                        : t('searchPlaceholderPassport')
                 }
                 value={searchQuery}
                 onChange={(e) => {
@@ -3843,27 +4008,15 @@ Thank you for supporting digital commerce in Ethiopia!
                 <div className="h-full w-[1px] bg-stone-300/50 dark:bg-zinc-700/50" />
                 <button
                   type="button"
-                  onClick={() => setIsImageSearchOpen(true)}
-                  className={`p-1 rounded-lg transition-all cursor-pointer flex items-center justify-center hover:scale-105 active:scale-95 ${
+                  onClick={() => setIsQrSearchOpen(true)}
+                  className={`p-1.5 rounded-lg transition-all cursor-pointer flex items-center justify-center hover:scale-105 active:scale-95 ${
                     isDarkMode
                       ? 'text-amber-500 hover:bg-zinc-700'
                       : 'text-[#1E3A1A] hover:bg-stone-200'
                   }`}
-                  title={lang === 'en' ? "Search by Image (AI vision)" : "በምስል ፈልግ (AI እይታ)"}
+                  title={lang === 'en' ? "Search by Image or Scan QR" : "በምስል ፈልግ ወይም QR አንብብ"}
                 >
-                  <Camera size={13} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsQrSearchOpen(true)}
-                  className={`p-1 rounded-lg transition-all cursor-pointer flex items-center justify-center hover:scale-105 active:scale-95 ${
-                    isDarkMode
-                      ? 'text-emerald-500 hover:bg-zinc-700'
-                      : 'text-[#1E3A1A] hover:bg-stone-200'
-                  }`}
-                  title={lang === 'en' ? "Scan Product or Vendor QR" : "QR ኮድ አንብብ"}
-                >
-                  <QrCode size={13} />
+                  <Camera size={14} />
                 </button>
               </div>
             </div>
@@ -3911,6 +4064,64 @@ Thank you for supporting digital commerce in Ethiopia!
           {activeDevModule === 'none' && (
             <>
               {viewedVendorId && (
+                <VendorStorefront 
+                  viewedVendorId={viewedVendorId}
+                  setViewedVendorId={setViewedVendorId}
+                  lang={lang}
+                  isDarkMode={isDarkMode}
+                  t={t}
+                  listings={listings}
+                  setSelectedListing={setSelectedListing}
+                  actingVendorId={actingVendorId}
+                  setActingVendorId={setActingVendorId}
+                  vendorsSocial={vendorsSocial}
+                  setVendorsSocial={setVendorsSocial}
+                  triggerPushNotification={triggerPushNotification}
+                  setIsMessageModalOpen={setIsMessageModalOpen}
+                  setBookingModalItem={setBookingModalItem}
+                  activeVideoModal={activeVideoModal}
+                  setActiveVideoModal={setActiveVideoModal}
+                  timelinePosts={timelinePosts}
+                  setTimelinePosts={setTimelinePosts}
+                  isFetchingTimeline={isFetchingTimeline}
+                  newPostTitle={newPostTitle}
+                  setNewPostTitle={setNewPostTitle}
+                  newPostContent={newPostContent}
+                  setNewPostContent={setNewPostContent}
+                  newPostType={newPostType}
+                  setNewPostType={setNewPostType}
+                  newPostVisibility={newPostVisibility}
+                  setNewPostVisibility={setNewPostVisibility}
+                  newCommentTexts={newCommentTexts}
+                  setNewCommentTexts={setNewCommentTexts}
+                  activeCommentPostId={activeCommentPostId}
+                  setActiveCommentPostId={setActiveCommentPostId}
+                  handleCreateTimelinePost={handleCreateTimelinePost}
+                  handleLikeTimelinePost={handleLikeTimelinePost}
+                  handleShareTimelinePost={handleShareTimelinePost}
+                  handleCommentTimelinePost={handleCommentTimelinePost}
+                  trustScore={trustScore}
+                  reviewSuccessMsg={reviewSuccessMsg}
+                  setReviewSuccessMsg={setReviewSuccessMsg}
+                  reviewErrorMsg={reviewErrorMsg}
+                  setReviewErrorMsg={setReviewErrorMsg}
+                  reviewFormRating={reviewFormRating}
+                  setReviewFormRating={setReviewFormRating}
+                  reviewFormText={reviewFormText}
+                  setReviewFormText={setReviewFormText}
+                  reviewFormPhoto={reviewFormPhoto}
+                  setReviewFormPhoto={setReviewFormPhoto}
+                  reviewFormVideo={reviewFormVideo}
+                  setReviewFormVideo={setReviewFormVideo}
+                  reviewsLoading={reviewsLoading}
+                  dynamicReviews={dynamicReviews}
+                  fetchVendorReviewsAndTrust={fetchVendorReviewsAndTrust}
+                  setSelectedMarketplaceProduct={setSelectedMarketplaceProduct}
+                  vendorMarketplaceProducts={vendorMarketplaceProducts}
+                />
+              )}
+
+              {false && viewedVendorId && (
                 /* --- RENDER ADVANCED VENDOR PROFILE PLATFORM --- */
                 <motion.div 
                   initial={{ opacity: 0, y: 15 }}
@@ -4431,20 +4642,20 @@ Thank you for supporting digital commerce in Ethiopia!
                     );
                   })()}
 
-              {/* Segmented Sub-Tabs Bar (Products, Services, Posts & Videos, Reviews, About) */}
+              {/* Segmented Sub-Tabs Bar (All-in-One, Services, Products, Videos, Posts, Reviews, About, Policies) */}
               <div className="flex gap-1.5 border-b border-neutral-850 pb-2 overflow-x-auto scrollbar-none select-none">
                 <button 
-                  onClick={() => setVendorProfileTab('products' as any)}
+                  onClick={() => setVendorProfileTab('all')}
                   className={`flex-shrink-0 text-xs px-4 py-2 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
-                    vendorProfileTab === 'products' || vendorProfileTab === 'listings'
+                    vendorProfileTab === 'all'
                       ? 'bg-amber-500 text-stone-950 font-black shadow-lg shadow-amber-500/15' 
                       : 'bg-neutral-900 border border-neutral-800 text-stone-400 hover:text-stone-200'
                   }`}
                 >
-                  📦 {lang === 'en' ? 'Products' : 'ዕቃዎች'}
+                  🏪 {lang === 'en' ? 'All-in-One' : 'ሁሉም በአንድ'}
                 </button>
                 <button 
-                  onClick={() => setVendorProfileTab('services' as any)}
+                  onClick={() => setVendorProfileTab('services')}
                   className={`flex-shrink-0 text-xs px-4 py-2 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
                     vendorProfileTab === 'services'
                       ? 'bg-amber-500 text-stone-950 font-black shadow-lg shadow-amber-500/15' 
@@ -4454,17 +4665,37 @@ Thank you for supporting digital commerce in Ethiopia!
                   🛠️ {lang === 'en' ? 'Services' : 'አገልግሎቶች'}
                 </button>
                 <button 
-                  onClick={() => setVendorProfileTab('videos' as any)}
+                  onClick={() => setVendorProfileTab('products')}
+                  className={`flex-shrink-0 text-xs px-4 py-2 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
+                    vendorProfileTab === 'products' || vendorProfileTab === 'listings'
+                      ? 'bg-amber-500 text-stone-950 font-black shadow-lg shadow-amber-500/15' 
+                      : 'bg-neutral-900 border border-neutral-800 text-stone-400 hover:text-stone-200'
+                  }`}
+                >
+                  📦 {lang === 'en' ? 'Products' : 'ዕቃዎች'}
+                </button>
+                <button 
+                  onClick={() => setVendorProfileTab('videos')}
                   className={`flex-shrink-0 text-xs px-4 py-2 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
                     vendorProfileTab === 'videos' 
                       ? 'bg-amber-500 text-stone-950 font-black shadow-lg shadow-amber-500/15' 
                       : 'bg-neutral-900 border border-neutral-800 text-stone-400 hover:text-stone-200'
                   }`}
                 >
-                  🎞️ {lang === 'en' ? 'Posts & Videos' : 'ልጥፎች እና ቪዲዮዎች'}
+                  🎞️ {lang === 'en' ? 'Videos' : 'ቪዲዮዎች'}
                 </button>
                 <button 
-                  onClick={() => setVendorProfileTab('reviews' as any)}
+                  onClick={() => setVendorProfileTab('posts')}
+                  className={`flex-shrink-0 text-xs px-4 py-2 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
+                    vendorProfileTab === 'posts' 
+                      ? 'bg-amber-500 text-stone-950 font-black shadow-lg shadow-amber-500/15' 
+                      : 'bg-neutral-900 border border-neutral-800 text-stone-400 hover:text-stone-200'
+                  }`}
+                >
+                  📢 {lang === 'en' ? 'Posts' : 'ልጥፎች'}
+                </button>
+                <button 
+                  onClick={() => setVendorProfileTab('reviews')}
                   className={`flex-shrink-0 text-xs px-4 py-2 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
                     vendorProfileTab === 'reviews' 
                       ? 'bg-amber-500 text-stone-950 font-black shadow-lg shadow-amber-500/15' 
@@ -4474,7 +4705,7 @@ Thank you for supporting digital commerce in Ethiopia!
                   ★ {lang === 'en' ? 'Reviews' : 'ግምገማዎች'}
                 </button>
                 <button 
-                  onClick={() => setVendorProfileTab('about' as any)}
+                  onClick={() => setVendorProfileTab('about')}
                   className={`flex-shrink-0 text-xs px-4 py-2 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
                     vendorProfileTab === 'about' 
                       ? 'bg-amber-500 text-stone-950 font-black shadow-lg shadow-amber-500/15' 
@@ -4484,7 +4715,7 @@ Thank you for supporting digital commerce in Ethiopia!
                   ℹ {lang === 'en' ? 'About' : 'ስለ እኛ'}
                 </button>
                 <button 
-                  onClick={() => setVendorProfileTab('policies' as any)}
+                  onClick={() => setVendorProfileTab('policies')}
                   className={`flex-shrink-0 text-xs px-4 py-2 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
                     vendorProfileTab === 'policies' 
                       ? 'bg-amber-500 text-stone-950 font-black shadow-lg shadow-amber-500/15' 
@@ -5753,6 +5984,14 @@ Thank you for supporting digital commerce in Ethiopia!
                 const normalized = vendorId.replace('-', ''); // normalize v-2 to v2, or keep v2
                 setViewedVendorId(normalized);
               }}
+              onSelectListing={(listing) => {
+                setSelectedListing(listing);
+              }}
+              onSelectProduct={(product) => {
+                setSelectedMarketplaceProduct(product);
+              }}
+              onToggleVoiceWelcome={handleVoiceWelcome}
+              isPlayingVoice={isPlayingVoice}
             />
           )}
 
@@ -5794,23 +6033,6 @@ Thank you for supporting digital commerce in Ethiopia!
               agenciesFilter={agenciesFilter}
               setJobFilter={setJobFilter}
             />
-          )}
-
-          {/* TAB 4: LOTTERY ZONE */}
-          {!viewedVendorId && activeTab === 'lottery' && (
-            <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-4 px-4 py-2"
-            >
-              <LotteryMatchmakingZone 
-                walletBalance={walletBalance}
-                setWalletBalance={setWalletBalance}
-                isDarkMode={isDarkMode}
-                t={t}
-                activeSubTab="lottery"
-              />
-            </motion.div>
           )}
 
           {/* TAB 5: MATCHMAKING ZONE */}
@@ -6167,118 +6389,191 @@ Thank you for supporting digital commerce in Ethiopia!
                 )}
               </div>
 
-              {/* 6th: SECURITY & SESSION (With Integrated Dark/Light Mode Switcher) */}
-              <div className={`p-4 rounded-3xl border shadow-sm transition-all duration-300 ${isDarkMode ? 'bg-zinc-900 border-zinc-800 text-zinc-100' : 'bg-white border-stone-200 text-stone-850'}`}>
-                <div className="flex items-center gap-2.5 mb-4 border-b pb-3 border-stone-100 dark:border-zinc-800">
-                  <div className={`p-2 rounded-xl ${isDarkMode ? 'bg-amber-500/15 text-amber-400' : 'bg-[#1E3A1A]/10 text-[#1E3A1A]'}`}>
-                    🛡️
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold">
-                      {lang === 'en' ? 'Security & Session' : 'ደህንነት እና መለያ ቁጥጥር'}
-                    </h3>
-                    <p className={`text-[10px] ${isDarkMode ? 'text-zinc-400' : 'text-stone-400'}`}>
-                      {lang === 'en' ? 'Configure biometric lock, adjust display, or log out of your Abyssinia session' : 'ባዮሜትሪክ ቁልፍ ያግብሩ፣ የማሳያ ገጽታ ይምረጡ ወይም ከመለያዎ ይውጡ'}
-                    </p>
-                  </div>
+              {/* System Preferences Block (Display Appearance & Language) */}
+              <div className={`p-4 rounded-3xl border shadow-sm transition-all duration-300 text-left space-y-3 ${isDarkMode ? 'bg-zinc-900 border-zinc-800 text-zinc-100' : 'bg-white border-stone-200 text-stone-850'}`}>
+                <div className="text-[11px] font-black uppercase tracking-wider text-amber-500 flex items-center gap-1.5 border-b pb-1.5 border-stone-100 dark:border-zinc-800">
+                  ⚙️ {lang === 'en' ? 'System Preferences' : 'የስርዓት ምርጫዎች'}
                 </div>
 
-                <div className="space-y-3.5">
-                  {/* System Preferences Block (Display Appearance & Language) */}
-                  <div className="bg-stone-50 dark:bg-zinc-950 p-3 rounded-2xl border border-stone-200/50 dark:border-zinc-850 text-left space-y-3">
-                    <div className="text-[11px] font-black uppercase tracking-wider text-amber-500 flex items-center gap-1.5 border-b pb-1.5 border-stone-100 dark:border-zinc-800">
-                      ⚙️ {lang === 'en' ? 'System Preferences' : 'የስርዓት ምርጫዎች'}
+                {/* Theme switcher */}
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <div className="text-[11px] font-bold flex items-center gap-1.5">
+                      {isDarkMode ? <Moon size={13} className="text-amber-400" /> : <Sun size={13} className="text-amber-600" />}
+                      {lang === 'en' ? 'Display Appearance' : 'የማሳያ ሁኔታ'}
                     </div>
-
-                    {/* Theme switcher */}
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <div className="text-[11px] font-bold flex items-center gap-1.5">
-                          {isDarkMode ? <Moon size={13} className="text-amber-400" /> : <Sun size={13} className="text-amber-600" />}
-                          {lang === 'en' ? 'Display Appearance' : 'የማሳያ ሁኔታ'}
-                        </div>
-                        <p className="text-[9px] text-stone-400 dark:text-zinc-500">
-                          {lang === 'en' ? 'Choose dark or light visual interface styles' : 'የጨለማ ወይም ብርሃን ጭብጥ ይቀይሩ'}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setIsDarkMode(!isDarkMode)}
-                        className={`text-[10px] px-2.5 py-1.5 rounded-xl border font-black transition cursor-pointer select-none flex items-center gap-1 ${
-                          isDarkMode ? 'bg-zinc-900 border-zinc-850 hover:bg-zinc-800 text-amber-400' : 'bg-white border-stone-250 hover:bg-stone-100 text-stone-750'
-                        }`}
-                      >
-                        {isDarkMode ? '🌙 Dark' : '☀️ Light'}
-                      </button>
-                    </div>
-
-                    {/* Language Switcher */}
-                    <div className="flex items-center justify-between pt-2.5 border-t border-stone-100 dark:border-zinc-850/60">
-                      <div className="space-y-0.5">
-                        <div className="text-[11px] font-bold flex items-center gap-1.5">
-                          <Globe size={13} className="text-amber-500" />
-                          {lang === 'en' ? 'System Language' : 'የስርዓት ቋንቋ'}
-                        </div>
-                        <p className="text-[9px] text-stone-400 dark:text-zinc-500">
-                          {lang === 'en' ? 'Switch between English and Amharic translations' : 'ቋንቋ በእንግሊዝኛ ወይም በአማርኛ መካከል ይቀይሩ'}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setLang(lang === 'en' ? 'am' : 'en')}
-                        className={`text-[10px] px-2.5 py-1.5 rounded-xl border font-black transition cursor-pointer select-none ${
-                          isDarkMode ? 'bg-zinc-900 border-zinc-850 hover:bg-zinc-800 text-amber-400' : 'bg-white border-stone-250 hover:bg-stone-100 text-stone-750'
-                        }`}
-                      >
-                        {lang === 'en' ? '🇪🇹 አማርኛ' : '🇺🇸 English'}
-                      </button>
-                    </div>
+                    <p className="text-[9px] text-stone-400 dark:text-zinc-500">
+                      {lang === 'en' ? 'Choose dark or light visual interface styles' : 'የጨለማ ወይም ብርሃን ጭብጥ ይቀይሩ'}
+                    </p>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsDarkMode(!isDarkMode)}
+                    className={`text-[10px] px-2.5 py-1.5 rounded-xl border font-black transition cursor-pointer select-none flex items-center gap-1 ${
+                      isDarkMode ? 'bg-zinc-950 border-zinc-850 hover:bg-zinc-800 text-amber-400' : 'bg-white border-stone-250 hover:bg-stone-100 text-stone-750'
+                    }`}
+                  >
+                    {isDarkMode ? '🌙 Dark' : '☀️ Light'}
+                  </button>
+                </div>
 
-                  {/* Biometric Toggle Row */}
-                  <div className="flex justify-between items-center bg-stone-50 dark:bg-zinc-950 p-2.5 rounded-2xl border border-stone-200/50 dark:border-zinc-850">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">🔘</span>
-                      <div className="text-left">
-                        <div className="text-[11px] font-bold">
-                          {lang === 'en' ? 'Biometrics Toggle' : 'ባዮሜትሪክስ መቀያየሪያ'}
-                        </div>
-                        <div className="text-[9px] text-stone-400 dark:text-zinc-500">
-                          {lang === 'en' ? 'Use Fingerprint or Face ID for fast logins' : 'የጣት አሻራ ወይም የፊት መለያ ለፈጣን መግቢያ ይጠቀሙ'}
-                        </div>
-                      </div>
+                {/* Language Switcher */}
+                <div className="flex items-center justify-between pt-2.5 border-t border-stone-100 dark:border-zinc-850/60">
+                  <div className="space-y-0.5">
+                    <div className="text-[11px] font-bold flex items-center gap-1.5">
+                      <Globe size={13} className="text-amber-500" />
+                      {lang === 'en' ? 'System Language' : 'የስርዓት ቋንቋ'}
+                    </div>
+                    <p className="text-[9px] text-stone-400 dark:text-zinc-500">
+                      {lang === 'en' ? 'Switch between English and Amharic translations' : 'ቋንቋ በእንግሊዝኛ ወይም በአማርኛ መካከል ይቀይሩ'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setLang(lang === 'en' ? 'am' : 'en')}
+                    className={`text-[10px] px-2.5 py-1.5 rounded-xl border font-black transition cursor-pointer select-none ${
+                      isDarkMode ? 'bg-zinc-950 border-zinc-850 hover:bg-zinc-800 text-amber-400' : 'bg-white border-stone-250 hover:bg-stone-100 text-stone-750'
+                    }`}
+                  >
+                    {lang === 'en' ? '🇪🇹 አማርኛ' : '🇺🇸 English'}
+                  </button>
+                </div>
+              </div>
+
+              {/* SECURITY & CORPORATE PRIVACY (Placed cleanly above biometric toggle) */}
+              <div className={`p-4 rounded-3xl border shadow-sm transition-all duration-300 text-left space-y-3.5 ${isDarkMode ? 'bg-zinc-900 border-zinc-800 text-zinc-100' : 'bg-white border-stone-200 text-stone-850'}`}>
+                <div className="text-[11px] font-black uppercase tracking-wider text-amber-500 flex items-center gap-1.5 border-b pb-1.5 border-stone-100 dark:border-zinc-800">
+                  🛡️ {lang === 'en' ? 'Security & Corporate Privacy' : 'የደህንነትና ምስጢራዊነት ቅንብሮች'}
+                </div>
+
+                <div className="space-y-4">
+                  {/* 2FA Switch */}
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5 text-left">
+                      <span className="text-[11px] font-bold block">{lang === 'en' ? 'Fayda SMS Two-Factor Auth (2FA)' : 'ባለሁለት ደረጃ ማረጋገጫ (2FA)'}</span>
+                      <p className="text-[9px] text-stone-400 dark:text-zinc-500">
+                        {lang === 'en' ? 'Settle escrow withdrawals securely using authorized SMS codes' : 'የገንዘብ ወጪ ሲያደርጉ በስልክዎ የደህንነት ኮድ እንዲላክ ያድርጉ'}
+                      </p>
                     </div>
                     <button
                       type="button"
-                      id="biometrics-settings-toggle"
                       onClick={() => {
-                        const newVal = !biometricsEnabled;
-                        setBiometricsEnabled(newVal);
-                        localStorage.setItem('ez_biometrics_enabled', newVal ? 'true' : 'false');
-                        alert(newVal ? '🔒 Biometrics enabled!' : '🔓 Biometrics disabled!');
+                        const nextVal = !isTwoFactor;
+                        setIsTwoFactor(nextVal);
+                        localStorage.setItem('ez_security_2fa', nextVal ? 'true' : 'false');
                       }}
-                      className={`w-11 h-6 rounded-full p-0.5 transition-colors relative duration-200 ${biometricsEnabled ? 'bg-emerald-500' : 'bg-stone-300 dark:bg-zinc-800'}`}
+                      className={`text-[10px] px-2.5 py-1.5 rounded-xl border font-black transition cursor-pointer select-none ${
+                        isTwoFactor 
+                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' 
+                          : 'bg-white dark:bg-zinc-950 border-stone-250 dark:border-zinc-800 text-stone-500'
+                      }`}
                     >
-                      <div className={`w-5 h-5 rounded-full bg-white shadow-md transform transition-transform duration-200 ${biometricsEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                      {isTwoFactor ? '✓ Active' : 'Off'}
                     </button>
                   </div>
 
-                  {/* Log Out button */}
+                  {/* Privacy Switch */}
+                  <div className="flex items-center justify-between pt-3 border-t border-stone-100 dark:border-zinc-850">
+                    <div className="space-y-0.5 text-left">
+                      <span className="text-[11px] font-bold block">{lang === 'en' ? 'Private Profile Mode' : 'ምስጢራዊ መለያ ሁኔታ'}</span>
+                      <p className="text-[9px] text-stone-400 dark:text-zinc-500">
+                        {lang === 'en' ? 'Hide your scanning history and wishlists from other vendors' : 'የእርስዎን የፍለጋና የፍላጎት ዝርዝሮች ከሌሎች ነጋዴዎች ደብቅ'}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nextVal = !isPrivateProfile;
+                        setIsPrivateProfile(nextVal);
+                        localStorage.setItem('ez_security_private', nextVal ? 'true' : 'false');
+                      }}
+                      className={`text-[10px] px-2.5 py-1.5 rounded-xl border font-black transition cursor-pointer select-none ${
+                        isPrivateProfile 
+                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' 
+                          : 'bg-white dark:bg-zinc-950 border-stone-250 dark:border-zinc-800 text-stone-500'
+                      }`}
+                    >
+                      {isPrivateProfile ? '✓ Private' : 'Public'}
+                    </button>
+                  </div>
+
+                  {/* Blocked Users Section */}
+                  <div className="pt-3 border-t border-stone-100 dark:border-zinc-850 space-y-2">
+                    <span className="text-[11px] font-bold block text-left">{lang === 'en' ? 'Blocked Users / Spam Nodes' : 'የታገዱ ሰዎች ዝርዝር'}</span>
+                    {blockedUsers.length === 0 ? (
+                      <p className="text-[9px] text-stone-500 text-left">{lang === 'en' ? 'No blocked users.' : 'ምንም የታገደ ሰው የለም።'}</p>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {blockedUsers.map((user) => (
+                          <div 
+                            key={user}
+                            className="flex justify-between items-center p-2 rounded-xl bg-white dark:bg-zinc-950 border border-stone-200 dark:border-zinc-850 text-[10px]"
+                          >
+                            <span className="text-stone-400 dark:text-zinc-500 font-mono">{user}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setBlockedUsers(prev => prev.filter(u => u !== user));
+                                alert(`User "${user}" successfully unblocked.`);
+                              }}
+                              className="text-[9px] font-black uppercase text-amber-500 hover:text-amber-400 cursor-pointer transition-colors"
+                            >
+                              Unblock
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Biometrics & Access Controls Block */}
+              <div className={`p-4 rounded-3xl border shadow-sm transition-all duration-300 space-y-3.5 ${isDarkMode ? 'bg-zinc-900 border-zinc-800 text-zinc-100' : 'bg-white border-stone-200 text-stone-850'}`}>
+                {/* Biometric Toggle Row */}
+                <div className="flex justify-between items-center bg-stone-50 dark:bg-zinc-950 p-2.5 rounded-2xl border border-stone-200/50 dark:border-zinc-850">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🔘</span>
+                    <div className="text-left">
+                      <div className="text-[11px] font-bold">
+                        {lang === 'en' ? 'Biometrics Toggle' : 'ባዮሜትሪክስ መቀያየሪያ'}
+                      </div>
+                      <div className="text-[9px] text-stone-400 dark:text-zinc-500">
+                        {lang === 'en' ? 'Use Fingerprint or Face ID for fast logins' : 'የጣት አሻራ ወይም የፊት መለያ ለፈጣን መግቢያ ይጠቀሙ'}
+                      </div>
+                    </div>
+                  </div>
                   <button
                     type="button"
-                    id="logout-settings-btn"
+                    id="biometrics-settings-toggle"
                     onClick={() => {
-                      localStorage.removeItem('ez_authenticated');
-                      localStorage.removeItem('ez_user_role');
-                      setIsAuthenticated(false);
-                      setActiveTab('Shop');
+                      const newVal = !biometricsEnabled;
+                      setBiometricsEnabled(newVal);
+                      localStorage.setItem('ez_biometrics_enabled', newVal ? 'true' : 'false');
+                      alert(newVal ? '🔒 Biometrics enabled!' : '🔓 Biometrics disabled!');
                     }}
-                    className="w-full min-h-[44px] bg-red-500/10 hover:bg-red-500/15 border border-red-500/30 text-red-650 hover:text-red-700 font-extrabold text-xs py-2.5 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                    className={`w-11 h-6 rounded-full p-0.5 transition-colors relative duration-200 ${biometricsEnabled ? 'bg-emerald-500' : 'bg-stone-300 dark:bg-zinc-800'}`}
                   >
-                    <span>🚪</span>
-                    <span>{lang === 'en' ? 'Lock Wallet & Log Out' : 'ኪስ ቦርሳን ቆልፍ እና ውጣ'}</span>
+                    <div className={`w-5 h-5 rounded-full bg-white shadow-md transform transition-transform duration-200 ${biometricsEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
                   </button>
                 </div>
+
+                {/* Log Out button */}
+                <button
+                  type="button"
+                  id="logout-settings-btn"
+                  onClick={() => {
+                    localStorage.removeItem('ez_authenticated');
+                    localStorage.removeItem('ez_user_role');
+                    setIsAuthenticated(false);
+                    setUserRole('USER');
+                    setActiveTab('shop');
+                  }}
+                  className="w-full min-h-[44px] bg-red-500/10 hover:bg-red-500/15 border border-red-500/30 text-red-650 hover:text-red-700 font-extrabold text-xs py-2.5 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <span>🚪</span>
+                  <span>{lang === 'en' ? 'Lock Wallet & Log Out' : 'ኪስ ቦርሳን ቆልፍ እና ውጣ'}</span>
+                </button>
               </div>
             </div>
           )}
@@ -6397,6 +6692,13 @@ Thank you for supporting digital commerce in Ethiopia!
                   walletBalance={walletBalance}
                   setWalletBalance={setWalletBalance}
                   triggerPushNotification={triggerPushNotification}
+                  onClose={() => setActiveDevModule('none')}
+                />
+              )}
+              {activeDevModule === ('real_estate_dashboard' as any) && (
+                <RealEstateAgencyDashboard 
+                  isDarkMode={isDarkMode}
+                  lang={lang === 'am' ? 'am' : 'en'}
                   onClose={() => setActiveDevModule('none')}
                 />
               )}
@@ -6545,12 +6847,96 @@ Thank you for supporting digital commerce in Ethiopia!
 
                 {/* Search Bar Block with Auto-Focus */}
                 <div className="space-y-3">
+                  {/* Hidden Image Input for Search */}
+                  <input 
+                    type="file" 
+                    ref={imageSearchInputRef} 
+                    accept="image/*" 
+                    onChange={handleImageFileChange} 
+                    className="hidden" 
+                  />
+
+                  {/* Dynamic Voice Search Panel */}
+                  {isVoiceSearchListening && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 dark:bg-amber-500/5 text-left space-y-3"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="relative flex h-3.5 w-3.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-amber-500"></span>
+                          </span>
+                          <span className="text-xs font-black uppercase text-amber-500 tracking-wider">
+                            🎤 {lang === 'am' ? 'የድምፅ ፍለጋ' : 'Voice Assistant Listening'}
+                          </span>
+                        </div>
+                        <button 
+                          onClick={() => setIsVoiceSearchListening(false)}
+                          className="text-stone-400 hover:text-amber-500 text-xs font-bold"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      
+                      <div className="flex items-center gap-3 bg-black/20 p-3 rounded-xl">
+                        <div className="flex gap-1 items-end h-5">
+                          <div className="w-1 bg-amber-500 rounded-full animate-[bounce_1s_infinite_100ms]" style={{ height: '60%' }} />
+                          <div className="w-1 bg-amber-500 rounded-full animate-[bounce_1s_infinite_300ms]" style={{ height: '90%' }} />
+                          <div className="w-1 bg-amber-500 rounded-full animate-[bounce_1s_infinite_200ms]" style={{ height: '40%' }} />
+                          <div className="w-1 bg-amber-500 rounded-full animate-[bounce_1s_infinite_400ms]" style={{ height: '100%' }} />
+                          <div className="w-1 bg-amber-500 rounded-full animate-[bounce_1s_infinite_150ms]" style={{ height: '50%' }} />
+                        </div>
+                        <p className="text-xs font-mono text-stone-200 flex-1 italic">
+                          "{voiceSearchTranscript || (lang === 'am' ? 'እየሰማሁ ነው... ይናገሩ' : 'Listening... Say something like "villas in Bole"')}"
+                        </p>
+                      </div>
+
+                      {/* Mock voice triggers for immediate fallback / testing convenience */}
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        <button 
+                          onClick={() => {
+                            setGlobalSearchQuery("Bole villa");
+                            fetchSearchResults("Bole villa");
+                            setIsVoiceSearchListening(false);
+                          }}
+                          className="text-[9px] bg-black/40 hover:bg-black/60 text-amber-500/90 font-bold px-2 py-1 rounded-lg transition"
+                        >
+                          🗣️ "villas in Bole"
+                        </button>
+                        <button 
+                          onClick={() => {
+                            setGlobalSearchQuery("traditional wear");
+                            fetchSearchResults("traditional wear");
+                            setIsVoiceSearchListening(false);
+                          }}
+                          className="text-[9px] bg-black/40 hover:bg-black/60 text-amber-500/90 font-bold px-2 py-1 rounded-lg transition"
+                        >
+                          🗣️ "traditional wear"
+                        </button>
+                        <button 
+                          onClick={() => {
+                            setGlobalSearchQuery("Ethiopian coffee");
+                            fetchSearchResults("Ethiopian coffee");
+                            setIsVoiceSearchListening(false);
+                          }}
+                          className="text-[9px] bg-black/40 hover:bg-black/60 text-amber-500/90 font-bold px-2 py-1 rounded-lg transition"
+                        >
+                          🗣️ "specialty coffee"
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+
                   <div className="relative">
                     <Search className="absolute left-4 top-3.5 text-stone-400" size={20} />
                     <input
                       type="text"
                       autoFocus
-                      placeholder="Search items, locations, jobs, agencies, traditional wear..."
+                      placeholder={lang === 'am' ? "Search Every-zone...ላይ" : "Search Every-zone..."}
                       value={globalSearchQuery}
                       onChange={(e) => {
                         setGlobalSearchQuery(e.target.value);
@@ -6580,7 +6966,19 @@ Thank you for supporting digital commerce in Ethiopia!
                       <div className="h-full w-[1px] bg-stone-300/50 dark:bg-zinc-700/50" />
                       <button
                         type="button"
-                        onClick={() => setIsImageSearchOpen(true)}
+                        onClick={triggerVoiceSearch}
+                        className={`p-1.5 rounded-xl border transition-all cursor-pointer flex items-center justify-center hover:scale-105 active:scale-95 ${
+                          isDarkMode
+                            ? 'bg-zinc-850 border-zinc-750 text-amber-500 hover:bg-zinc-750'
+                            : 'bg-stone-50 border-stone-200 text-amber-600 hover:bg-stone-100'
+                        }`}
+                        title={lang === 'en' ? "Voice Search" : "በድምፅ ፈልግ"}
+                      >
+                        <Mic size={14} className="text-amber-500" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => imageSearchInputRef.current?.click()}
                         className={`p-1.5 rounded-xl border transition-all cursor-pointer flex items-center justify-center hover:scale-105 active:scale-95 ${
                           isDarkMode
                             ? 'bg-zinc-850 border-zinc-750 text-amber-500 hover:bg-zinc-750'
@@ -6605,6 +7003,38 @@ Thank you for supporting digital commerce in Ethiopia!
                     </div>
                   </div>
 
+                  {/* Real-time Feature Selection Hub: 🎤 Voice | 📷 search image | 🤖 AI */}
+                  <div className="grid grid-cols-3 gap-2 bg-stone-100/40 dark:bg-zinc-900/40 p-1 rounded-2xl border border-stone-200/40 dark:border-zinc-800/40">
+                    <button
+                      type="button"
+                      onClick={triggerVoiceSearch}
+                      className="py-2.5 px-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer hover:bg-white dark:hover:bg-zinc-800 text-stone-700 dark:text-zinc-300 shadow-sm"
+                    >
+                      <span>🎤 {lang === 'am' ? 'Voice (ድምፅ)' : 'Voice'}</span>
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => imageSearchInputRef.current?.click()}
+                      className="py-2.5 px-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer hover:bg-white dark:hover:bg-zinc-800 text-stone-700 dark:text-zinc-300 shadow-sm"
+                    >
+                      <span>📷 {lang === 'am' ? 'search image (በምስል)' : 'search image'}</span>
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const inputEl = document.getElementById('ai-chat-input-focus');
+                        if (inputEl) {
+                          inputEl.focus();
+                        }
+                      }}
+                      className="py-2.5 px-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer hover:bg-white dark:hover:bg-zinc-800 text-stone-700 dark:text-zinc-300 shadow-sm"
+                    >
+                      <span>🤖 {lang === 'am' ? 'AI (ረዳት)' : 'AI'}</span>
+                    </button>
+                  </div>
+
                   {/* AI CHAT ASSISTANT COMPONENT */}
                   <div className={`p-4 rounded-2xl border ${
                     isDarkMode ? 'bg-zinc-900/65 border-zinc-850' : 'bg-white border-stone-150'
@@ -6618,6 +7048,7 @@ Thank you for supporting digital commerce in Ethiopia!
                     
                     <div className="flex gap-2">
                       <input 
+                        id="ai-chat-input-focus"
                         type="text"
                         placeholder={lang === 'en' ? "Ask Every-zone AI... (e.g. Dubai driver jobs)" : "ኤቭሪ-ዞን AIን ጠይቅ..."}
                         onKeyDown={(e) => {
@@ -6760,18 +7191,57 @@ Thank you for supporting digital commerce in Ethiopia!
 
                 {/* If no query, show trending / recent / saved searches */}
                 {!searchLoading && !globalSearchQuery.trim() && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Trending Searches Column */}
+                  <div className="space-y-8 pt-4">
+                    {/* Recent Searches Block */}
                     <div className="space-y-3">
-                      <h4 className="text-xs font-black uppercase tracking-wider text-amber-500 flex items-center gap-1.5">
-                        <TrendingUp size={13} />
-                        Trending Keywords
-                      </h4>
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xs font-black uppercase tracking-wider text-[#C5A059] flex items-center gap-1.5">
+                          <History size={13} className="text-[#C5A059]" />
+                          {lang === 'am' ? 'የቅርብ ጊዜ ፍለጋዎች (Recent Searches)' : 'Recent Searches'}
+                        </h4>
+                        <span className="text-[10px] font-mono opacity-50 bg-[#C5A059]/10 text-[#C5A059] px-2 py-0.5 rounded-full uppercase">Your History</span>
+                      </div>
                       <div className={`p-4 rounded-2xl border ${
                         isDarkMode ? 'bg-zinc-900 border-zinc-850' : 'bg-white border-stone-200'
-                      } space-y-2`}>
+                      } flex flex-wrap gap-2`}>
+                        {recentSearches.length === 0 ? (
+                          <span className="text-xs text-stone-400">No recent search records on file</span>
+                        ) : (
+                          recentSearches.map((recent) => (
+                            <button
+                              key={recent.id || recent.query}
+                              onClick={() => {
+                                setGlobalSearchQuery(recent.query);
+                                fetchSearchResults(recent.query);
+                              }}
+                              className={`text-xs font-bold px-3.5 py-2 rounded-xl transition-all border flex items-center gap-2 cursor-pointer select-none shadow-sm ${
+                                isDarkMode 
+                                  ? 'bg-zinc-800 border-zinc-700 text-zinc-200 hover:bg-zinc-750 hover:border-amber-500/40' 
+                                  : 'bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100 hover:border-stone-300'
+                              }`}
+                            >
+                              <History size={11} className="opacity-60 text-amber-500" />
+                              <span>{recent.query}</span>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Trending Searches Block */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xs font-black uppercase tracking-wider text-amber-500 flex items-center gap-1.5">
+                          <TrendingUp size={13} className="text-amber-500" />
+                          {lang === 'am' ? 'ታዋቂ ፍለጋዎች (Trending Searches)' : 'Trending Searches'}
+                        </h4>
+                        <span className="text-[10px] font-mono opacity-50 bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded-full uppercase">Real-time Hot</span>
+                      </div>
+                      <div className={`p-4 rounded-2xl border ${
+                        isDarkMode ? 'bg-zinc-900 border-zinc-850' : 'bg-white border-stone-200'
+                      } grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5`}>
                         {trendingSearches.length === 0 ? (
-                          <div className="text-xs text-stone-400">Loading trends...</div>
+                          <div className="text-xs text-stone-400 col-span-full">Loading trends...</div>
                         ) : (
                           trendingSearches.map((trend) => (
                             <button
@@ -6781,89 +7251,144 @@ Thank you for supporting digital commerce in Ethiopia!
                                 fetchSearchResults(trend.keyword);
                                 logSearchClick(trend.keyword);
                               }}
-                              className={`w-full flex items-center justify-between text-xs p-2 rounded-xl transition-all cursor-pointer text-left ${
-                                isDarkMode ? 'hover:bg-zinc-800' : 'hover:bg-stone-50'
+                              className={`flex items-center justify-between text-xs p-3 rounded-xl border transition-all cursor-pointer text-left font-semibold shadow-sm ${
+                                isDarkMode 
+                                  ? 'bg-zinc-800 border-zinc-700 text-zinc-100 hover:bg-zinc-750 hover:border-amber-500/30' 
+                                  : 'bg-stone-50 border-stone-200 text-stone-800 hover:bg-stone-100 hover:border-stone-300'
                               }`}
                             >
-                              <span className="font-bold flex items-center gap-2">
-                                <span className="text-[10px] text-amber-500 font-mono font-bold">#</span>
-                                {trend.keyword}
+                              <span className="font-bold flex items-center gap-1.5 min-w-0">
+                                <span className="text-amber-500 font-black text-xs">🔥</span>
+                                <span className="truncate">{trend.keyword}</span>
                               </span>
-                              <span className="text-[9px] font-mono opacity-50">{trend.searchCount || 0} hits</span>
+                              <span className="text-[9px] font-mono opacity-50 shrink-0 bg-neutral-500/10 px-1.5 py-0.5 rounded-md font-bold">
+                                {trend.searchCount || 0}
+                              </span>
                             </button>
                           ))
                         )}
                       </div>
                     </div>
 
-                    {/* Recent and Saved Queries Column */}
-                    <div className="space-y-6">
-                      <div className="space-y-3">
+                    {/* Popular Categories Block with Custom Category Design */}
+                    <div className="space-y-3.5">
+                      <div className="flex items-center justify-between">
                         <h4 className="text-xs font-black uppercase tracking-wider text-[#C5A059] flex items-center gap-1.5">
-                          <History size={13} />
-                          Recent Searches
+                          <Sparkles size={13} className="text-[#C5A059]" />
+                          {lang === 'am' ? 'ታዋቂ ዘርፎች (Popular Categories)' : 'Popular Categories'}
                         </h4>
-                        <div className={`p-4 rounded-2xl border ${
-                          isDarkMode ? 'bg-zinc-900 border-zinc-850' : 'bg-white border-stone-200'
-                        } flex flex-wrap gap-1.5`}>
-                          {recentSearches.length === 0 ? (
-                            <span className="text-xs text-stone-400">No recent search records on file</span>
-                          ) : (
-                            recentSearches.map((recent) => (
-                              <button
-                                key={recent.id || recent.query}
-                                onClick={() => {
-                                  setGlobalSearchQuery(recent.query);
-                                  fetchSearchResults(recent.query);
-                                }}
-                                className={`text-[10px] font-bold px-2.5 py-1 rounded-lg transition-all border ${
-                                  isDarkMode 
-                                    ? 'bg-zinc-800 border-zinc-750 text-zinc-300 hover:bg-zinc-800' 
-                                    : 'bg-stone-50 border-stone-150 text-stone-600 hover:bg-stone-100'
-                                }`}
-                              >
-                                {recent.query}
-                              </button>
-                            ))
-                          )}
-                        </div>
+                        <span className="text-[10px] font-mono opacity-50 bg-[#C5A059]/10 text-[#C5A059] px-2 py-0.5 rounded-full uppercase">Premium Directory</span>
                       </div>
+                      
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3.5">
+                        {[
+                          { 
+                            label: lang === 'am' ? "አልባሳት" : "Fashion", 
+                            keyword: "clothing", 
+                            icon: <Shirt className="w-5 h-5" />, 
+                            gradient: "from-rose-500/10 to-pink-500/5 dark:from-rose-500/20 dark:to-pink-500/10 hover:from-rose-500/20 hover:to-pink-500/15",
+                            accentColor: "text-rose-500 dark:text-rose-400"
+                          },
+                          { 
+                            label: lang === 'am' ? "ኤሌክትሮኒክስ" : "Electronics", 
+                            keyword: "electronics", 
+                            icon: <Laptop className="w-5 h-5" />, 
+                            gradient: "from-blue-500/10 to-cyan-500/5 dark:from-blue-500/20 dark:to-cyan-500/10 hover:from-blue-500/20 hover:to-cyan-500/15",
+                            accentColor: "text-blue-500 dark:text-blue-400"
+                          },
+                          { 
+                            label: lang === 'am' ? "ቤቶች" : "Properties", 
+                            keyword: "villa", 
+                            icon: <Home className="w-5 h-5" />, 
+                            gradient: "from-emerald-500/10 to-teal-500/5 dark:from-emerald-500/20 dark:to-emerald-500/10 hover:from-emerald-500/20 hover:to-teal-500/15",
+                            accentColor: "text-emerald-500 dark:text-emerald-400"
+                          },
+                          { 
+                            label: lang === 'am' ? "ስራዎች" : "Jobs", 
+                            keyword: "driver", 
+                            icon: <Briefcase className="w-5 h-5" />, 
+                            gradient: "from-purple-500/10 to-fuchsia-500/5 dark:from-purple-500/20 dark:to-fuchsia-500/10 hover:from-purple-500/20 hover:to-fuchsia-500/15",
+                            accentColor: "text-purple-500 dark:text-purple-400"
+                          },
+                          { 
+                            label: lang === 'am' ? "ስልኮች" : "Phones", 
+                            keyword: "phone", 
+                            icon: <Smartphone className="w-5 h-5" />, 
+                            gradient: "from-amber-500/10 to-orange-500/5 dark:from-amber-500/20 dark:to-orange-500/10 hover:from-amber-500/20 hover:to-orange-500/15",
+                            accentColor: "text-amber-500 dark:text-amber-400"
+                          },
+                          { 
+                            label: lang === 'am' ? "ቡና" : "Coffee", 
+                            keyword: "coffee", 
+                            icon: <Coffee className="w-5 h-5" />, 
+                            gradient: "from-yellow-500/10 to-amber-500/5 dark:from-yellow-500/20 dark:to-amber-500/10 hover:from-yellow-500/20 hover:to-amber-500/15",
+                            accentColor: "text-yellow-600 dark:text-yellow-400"
+                          },
+                          { 
+                            label: lang === 'am' ? "መኪና" : "Vehicles", 
+                            keyword: "car", 
+                            icon: <Car className="w-5 h-5" />, 
+                            gradient: "from-red-500/10 to-orange-500/5 dark:from-red-500/20 dark:to-red-500/10 hover:from-red-500/20 hover:to-red-500/15",
+                            accentColor: "text-red-500 dark:text-red-400"
+                          }
+                        ].map((cat, idx) => (
+                          <motion.button
+                            key={idx}
+                            whileHover={{ scale: 1.05, y: -2 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => {
+                              setGlobalSearchQuery(cat.keyword);
+                              fetchSearchResults(cat.keyword);
+                            }}
+                            className={`flex flex-col items-center gap-2 p-3 rounded-[20px] border transition-all duration-300 relative overflow-hidden cursor-pointer select-none ${
+                              isDarkMode 
+                                ? `bg-gradient-to-br ${cat.gradient} border-zinc-850 hover:border-[#C5A059]/40` 
+                                : `bg-gradient-to-br ${cat.gradient} border-stone-150 hover:border-[#1E3A1A]/30`
+                            }`}
+                          >
+                            <div className={`p-2 rounded-xl bg-white/25 dark:bg-black/30 ${cat.accentColor}`}>
+                              {cat.icon}
+                            </div>
+                            <span className="text-[11px] font-black tracking-tight text-stone-700 dark:text-stone-300">
+                              {cat.label}
+                            </span>
+                          </motion.button>
+                        ))}
+                      </div>
+                    </div>
 
-                      {/* Saved Searches Column */}
+                    {/* Saved Searches Block */}
+                    {savedSearches.length > 0 && (
                       <div className="space-y-3">
                         <h4 className="text-xs font-black uppercase tracking-wider text-emerald-500 flex items-center gap-1.5">
-                          <Bookmark size={13} />
+                          <Bookmark size={13} className="text-emerald-500" />
                           Saved Search Alerts
                         </h4>
                         <div className={`p-4 rounded-2xl border ${
                           isDarkMode ? 'bg-zinc-905 border-zinc-850' : 'bg-white border-stone-200'
-                        } space-y-2`}>
-                          {savedSearches.length === 0 ? (
-                            <div className="text-xs text-stone-400">No saved search alerts yet. Tap "Save Search" on any keyword.</div>
-                          ) : (
-                            savedSearches.map((saved) => (
-                              <div
-                                key={saved.id}
-                                className={`flex items-center justify-between text-xs p-2 rounded-xl ${
-                                  isDarkMode ? 'bg-zinc-900' : 'bg-stone-50'
-                                }`}
+                        } flex flex-wrap gap-2`}>
+                          {savedSearches.map((saved) => (
+                            <div
+                              key={saved.id}
+                              className={`flex items-center gap-2 text-xs py-1.5 px-3 rounded-xl border ${
+                                isDarkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-stone-50 border-stone-200'
+                              }`}
+                            >
+                              <button
+                                onClick={() => {
+                                  setGlobalSearchQuery(saved.query);
+                                  fetchSearchResults(saved.query);
+                                }}
+                                className="font-bold text-left hover:underline cursor-pointer"
                               >
-                                <button
-                                  onClick={() => {
-                                    setGlobalSearchQuery(saved.query);
-                                    fetchSearchResults(saved.query);
-                                  }}
-                                  className="font-bold text-left hover:underline cursor-pointer"
-                                >
-                                  {saved.query}
-                                </button>
-                                <span className="text-[8px] uppercase tracking-widest font-black text-emerald-500">Alert Active</span>
-                              </div>
-                            ))
-                          )}
+                                {saved.query}
+                              </button>
+                              <span className="text-[8px] uppercase tracking-widest font-black text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded-full">Active</span>
+                            </div>
+                          ))}
                         </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 )}
 
@@ -7052,14 +7577,6 @@ Thank you for supporting digital commerce in Ethiopia!
           </button>
 
           <button 
-            onClick={() => { setActiveTab('lottery'); setSelectedListing(null); setViewedVendorId(null); }}
-            className={`flex flex-col items-center gap-1 transition-all ${activeTab === 'lottery' ? (isDarkMode ? 'text-amber-400 scale-105' : 'text-[#1E3A1A] scale-105') : 'text-stone-400 hover:text-stone-600'}`}
-          >
-            <Ticket size={18} />
-            <span className="text-[9px] font-bold">{lang === 'en' ? 'Lottery' : 'ዕድል ሎተሪ'}</span>
-          </button>
-
-          <button 
             onClick={() => { setActiveTab('matchmaking'); setSelectedListing(null); setViewedVendorId(null); }}
             className={`flex flex-col items-center gap-1 transition-all ${activeTab === 'matchmaking' ? (isDarkMode ? 'text-amber-400 scale-105' : 'text-[#1E3A1A] scale-105') : 'text-stone-400 hover:text-stone-600'}`}
           >
@@ -7099,202 +7616,221 @@ Thank you for supporting digital commerce in Ethiopia!
                 {/* Horizontal Drag-notch ornament */}
                 <div className="w-12 h-1 bg-stone-300 rounded-full mx-auto shrink-0 mb-1"></div>
 
-                {/* Main Head Details with View Profile Button */}
-                <div className="flex justify-between items-start">
-                  <div className="space-y-1.5 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                       <span className={`text-[10px] font-sans tracking-widest font-black uppercase block ${isDarkMode ? 'text-amber-400' : 'text-[#C5A059]'}`}>
-                        {lang === 'en' ? selectedListing.vendorName : selectedListing.vendorNameAm || selectedListing.vendorName}
-                      </span>
-                      <button 
-                        onClick={() => {
-                          setViewedVendorId(selectedListing.vendorId);
-                          setSelectedListing(null);
-                        }}
-                        className="bg-[#1E3A1A] hover:bg-[#1E3A1A]/95 text-white text-[9.5px] font-bold px-2 py-1 rounded-lg flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-sm shrink-0"
-                      >
-                        👥 {t('viewProfile')}
-                      </button>
-                    </div>
-                    <h2 className={`text-base font-bold leading-snug ${isDarkMode ? 'text-white' : 'text-stone-900'}`}>
-                      {getLocalizedData(selectedListing, 'title', lang)}
-                    </h2>
-                  </div>
-                  <button 
-                    onClick={() => setSelectedListing(null)}
-                    className={`w-7 h-7 rounded-full font-bold flex items-center justify-center text-xs shrink-0 select-none cursor-pointer ml-1 transition-colors ${isDarkMode ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-350' : 'bg-stone-200 hover:bg-stone-300 text-stone-600'}`}
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                <div className={`flex justify-between items-baseline border-b pb-3 mb-2 shrink-0 ${isDarkMode ? 'border-zinc-800' : 'border-stone-200'}`}>
-                  <span className={`text-lg font-bold font-mono tracking-widest ${isDarkMode ? 'text-amber-400' : 'text-green-700'}`}>
-                    {getLocalizedData(selectedListing, 'price', lang)}
-                  </span>
-                  <div className="text-[11px] flex items-center gap-1 select-none font-medium">
-                    <MapPin size={11} className={`${isDarkMode ? 'text-amber-400' : 'text-[#C5A059]'} shrink-0`} />
-                    <span>{getLocalizedData(selectedListing, 'location', lang)}</span>
-                  </div>
-                </div>
-
-                {/* DYNAMIC PROMINENT PROPER IMAGE PREVIEW (Fixes text-only details bug) */}
-                <div className={`relative rounded-2xl overflow-hidden border shadow-md group shrink-0 ${isDarkMode ? 'border-zinc-800' : 'border-stone-200'}`}>
-                  <img 
-                    src={selectedListing.image} 
-                    alt={getLocalizedData(selectedListing, 'title', lang)}
-                    referrerPolicy="no-referrer"
-                    className="w-full h-52 object-cover object-center transition-transform duration-500 group-hover:scale-105" 
+                {selectedListing.category === 'houses' ? (
+                  <PropertyDetailView 
+                    selectedListing={selectedListing}
+                    lang={lang}
+                    isDarkMode={isDarkMode}
+                    t={t}
+                    setViewedVendorId={setViewedVendorId}
+                    setSelectedListing={setSelectedListing}
+                    handleInstantPurchase={handleInstantPurchase}
+                    handleChapaRentPayment={handleChapaRentPayment}
+                    setActiveBookingListing={setActiveBookingListing}
+                    setActiveBusinessCardListing={setActiveBusinessCardListing}
+                    handleReportAndSuspend={handleReportAndSuspend}
+                    triggerPushNotification={triggerPushNotification}
                   />
-                  <div className={`absolute inset-0 bg-gradient-to-t via-transparent pointer-events-none ${isDarkMode ? 'from-zinc-950/70' : 'from-stone-900/40'}`}></div>
-                  <span className="absolute bottom-2.5 right-2.5 bg-neutral-950/75 backdrop-blur-xs text-[9px] text-white px-2.5 py-1 rounded-lg font-bold tracking-wider uppercase border border-white/10">
-                    📸 {lang === 'en' ? 'Product Preview' : (lang === 'am' ? 'የምርት ማሳያ' : (lang === 'ti' ? 'ቅድመ ትርኢት ፍርያት' : (lang === 'om' ? 'Ilaalcha Meeshaa' : 'معاينة المنتج')))}
-                  </span>
-                </div>
-
-                {/* INTERACTIVE HIGH-FIDELITY MARKETING VIDEO PLAYER */}
-                <SimulatedVideoPlayer videoPlaceholderTheme={selectedListing.videoPlaceholderTheme} />
-
-                {/* LISTING DESCRIPTION BODY */}
-                <div className="space-y-2 text-xs">
-                  <p className="text-stone-650 font-sans leading-relaxed tracking-wide font-medium">
-                    {getLocalizedData(selectedListing, 'description', lang)}
-                  </p>
-                  
-                  {selectedListing.features && selectedListing.features.length > 0 && (
-                    <div className="bg-white p-3 rounded-2xl border border-stone-200 space-y-1.5 shadow-xs">
-                      <div className="text-[10px] text-stone-500 font-bold uppercase tracking-wider">{t('specificationChecklist')}</div>
-                      {getLocalizedArray(selectedListing, 'features', lang).map((feature, fIdx) => (
-                        <div key={fIdx} className="flex items-center gap-2 text-stone-700 font-medium">
-                          <CheckCircle2 size={11} className="text-emerald-700 shrink-0" />
-                          <span>{feature}</span>
+                ) : (
+                  <>
+                    {/* Main Head Details with View Profile Button */}
+                    <div className="flex justify-between items-start">
+                      <div className="space-y-1.5 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                           <span className={`text-[10px] font-sans tracking-widest font-black uppercase block ${isDarkMode ? 'text-amber-400' : 'text-[#C5A059]'}`}>
+                            {lang === 'en' ? selectedListing.vendorName : selectedListing.vendorNameAm || selectedListing.vendorName}
+                          </span>
+                          <button 
+                            onClick={() => {
+                              setViewedVendorId(selectedListing.vendorId);
+                              setSelectedListing(null);
+                            }}
+                            className="bg-[#1E3A1A] hover:bg-[#1E3A1A]/95 text-white text-[9.5px] font-bold px-2 py-1 rounded-lg flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-sm shrink-0"
+                          >
+                            👥 {t('viewProfile')}
+                          </button>
                         </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {selectedListing.requirements && selectedListing.requirements.length > 0 && (
-                    <div className="bg-white p-3 rounded-2xl border border-stone-200/80 space-y-1.5 shadow-xs">
-                      <div className="text-[10px] text-stone-550 font-extrabold uppercase tracking-wide">{t('jobRequirements')}</div>
-                      {getLocalizedArray(selectedListing, 'requirements', lang).map((req, rIdx) => (
-                        <div key={rIdx} className="flex items-center gap-2 text-stone-700 font-medium">
-                          <span className="w-1.5 h-1.5 bg-[#C5A059] rounded-full shrink-0"></span>
-                          <span>{req}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* PRIMARY ACTIONS PANEL (Buy / Pay Rent with .chapa-gradient class integration) */}
-                <div className="flex gap-2.5 shrink-0 select-none">
-                  <button 
-                    onClick={() => handleInstantPurchase(selectedListing)}
-                    className="flex-1 bg-[#1E3A1A] text-white hover:opacity-95 text-xs py-3 rounded-xl font-bold transition-all shadow-md active:scale-95 cursor-pointer"
-                  >
-                    {t('instantPurchase')}
-                  </button>
-                  <button 
-                    onClick={() => handleChapaRentPayment(selectedListing)}
-                    className="bg-stone-850 hover:bg-stone-900 hover:opacity-95 text-white text-xs px-3.5 py-3 rounded-xl font-bold transition-all chapa-gradient shadow-md flex items-center gap-1.5 border border-amber-500/20 cursor-pointer"
-                  >
-                    {t('payRent')}
-                  </button>
-                </div>
-
-                {/* UPGRADE FEATURES: VISIT SCHEDULER & DIGITAL PROMO BUSINESS CARD GENERATOR */}
-                <div className="grid grid-cols-2 gap-2.5 shrink-0 select-none">
-                  <button 
-                    type="button"
-                    onClick={() => setActiveBookingListing(selectedListing)}
-                    className="flex-1 py-2.5 bg-[#FAF9F6] border border-[#1E3A1A]/20 hover:bg-stone-50 text-stone-800 text-[10px] font-black uppercase rounded-xl shadow-2xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                  >
-                    📅 Schedule Visit / ጉብኝት
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={() => setActiveBusinessCardListing(selectedListing)}
-                    className="flex-1 py-2.5 bg-gradient-to-r from-amber-500/10 to-amber-500/20 border border-amber-500/40 hover:bg-amber-500/30 text-stone-900 text-[10px] font-black uppercase rounded-xl shadow-2xs transition-colors flex items-center justify-center gap-1 cursor-pointer font-sans"
-                  >
-                    🎴 Business Card / የሱቅ ካርድ
-                  </button>
-                </div>
-
-                {/* DIRECT ACTIVE STAR RATING LOG & REVIEW SUBMISSION INPUTS */}
-                <div className="p-4 bg-white rounded-2xl border border-stone-200 shadow-sm">
-                  <h4 className="text-xs font-bold text-stone-805 mb-2 flex items-center justify-between">
-                    <span>{t('averageUserReviews')}</span>
-                    <span className="text-[11px] text-[#C5A059] font-mono font-black">{selectedListing.rating} / 5.0 (★)</span>
-                  </h4>
-
-                  {/* Rating Selector */}
-                  <form onSubmit={(e) => handleReviewSubmission(e, selectedListing.id)} className="space-y-3">
-                    <div className="flex gap-1.5 items-center select-none">
-                      <span className="text-[10px] text-stone-400 font-bold mr-1">{t('yourRating')}</span>
-                      {[1, 2, 3, 4, 5].map(starIdx => (
-                        <button
-                          key={starIdx}
-                          type="button"
-                          onClick={() => setUserRating(starIdx)}
-                          className="focus:outline-none cursor-pointer"
-                        >
-                          <Star 
-                            size={16} 
-                            className={`${starIdx <= userRating ? 'text-[#C5A059] fill-[#C5A059]' : 'text-stone-300'} hover:scale-110 transition-transform`} 
-                          />
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="relative">
-                      <input 
-                        type="text"
-                        placeholder={t('writeReviewPlaceholder')}
-                        value={textReview}
-                        onChange={(e) => setTextReview(e.target.value)}
-                        className="w-full bg-stone-50 border border-stone-200 focus:border-[#1E3A1A]/40 text-[11px] px-3.5 py-2.5 rounded-xl text-stone-800 outline-none pr-14 placeholder-stone-400 focus:ring-1 focus:ring-[#1E3A1A]/30"
-                      />
+                        <h2 className={`text-base font-bold leading-snug ${isDarkMode ? 'text-white' : 'text-stone-900'}`}>
+                          {getLocalizedData(selectedListing, 'title', lang)}
+                        </h2>
+                      </div>
                       <button 
-                        type="submit"
-                        className="absolute right-1.5 top-[5px] bg-[#1E3A1A] hover:bg-[#1E3A1A]/90 text-white font-bold text-[9px] px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
+                        onClick={() => setSelectedListing(null)}
+                        className={`w-7 h-7 rounded-full font-bold flex items-center justify-center text-xs shrink-0 select-none cursor-pointer ml-1 transition-colors ${isDarkMode ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-350' : 'bg-stone-200 hover:bg-stone-300 text-stone-600'}`}
                       >
-                        {t('postBtn')}
+                        ✕
                       </button>
                     </div>
-                  </form>
 
-                  {/* Dynamic review listing elements */}
-                  <div className="mt-3.5 space-y-2.5 max-h-[140px] overflow-y-auto pr-1">
-                    {selectedListing.reviews && selectedListing.reviews.length > 0 ? (
-                      selectedListing.reviews.map(rev => (
-                        <div key={rev.id} className="border-t border-stone-200 pt-2 text-xs text-stone-800">
-                          <div className="flex justify-between items-center text-[10px] text-stone-400 mb-0.5 font-sans">
-                            <span className="font-bold text-[#C5A059]">{rev.user}</span>
-                            <span>{rev.date}</span>
-                          </div>
-                          <div className="flex gap-1 mb-1">
-                            {Array.from({ length: 5 }).map((_, s) => (
-                              <Star key={s} size={8} className={s < rev.rating ? 'text-[#C5A059] fill-[#C5A059]' : 'text-stone-200'} />
-                            ))}
-                          </div>
-                          <p className="text-stone-605 font-serif leading-relaxed text-[11px]">&ldquo;{rev.text}&rdquo;</p>
+                    <div className={`flex justify-between items-baseline border-b pb-3 mb-2 shrink-0 ${isDarkMode ? 'border-zinc-800' : 'border-stone-200'}`}>
+                      <span className={`text-lg font-bold font-mono tracking-widest ${isDarkMode ? 'text-amber-400' : 'text-green-700'}`}>
+                        {getLocalizedData(selectedListing, 'price', lang)}
+                      </span>
+                      <div className="text-[11px] flex items-center gap-1 select-none font-medium">
+                        <MapPin size={11} className={`${isDarkMode ? 'text-amber-400' : 'text-[#C5A059]'} shrink-0`} />
+                        <span>{getLocalizedData(selectedListing, 'location', lang)}</span>
+                      </div>
+                    </div>
+
+                    {/* DYNAMIC PROMINENT PROPER IMAGE PREVIEW (Fixes text-only details bug) */}
+                    <div className={`relative rounded-2xl overflow-hidden border shadow-md group shrink-0 ${isDarkMode ? 'border-zinc-800' : 'border-stone-200'}`}>
+                      <img 
+                        src={selectedListing.image} 
+                        alt={getLocalizedData(selectedListing, 'title', lang)}
+                        referrerPolicy="no-referrer"
+                        className="w-full h-52 object-cover object-center transition-transform duration-500 group-hover:scale-105" 
+                      />
+                      <div className={`absolute inset-0 bg-gradient-to-t via-transparent pointer-events-none ${isDarkMode ? 'from-zinc-950/70' : 'from-stone-900/40'}`}></div>
+                      <span className="absolute bottom-2.5 right-2.5 bg-neutral-950/75 backdrop-blur-xs text-[9px] text-white px-2.5 py-1 rounded-lg font-bold tracking-wider uppercase border border-white/10">
+                        📸 {lang === 'en' ? 'Product Preview' : (lang === 'am' ? 'የምርት ማሳያ' : (lang === 'ti' ? 'ቅድመ ትርኢት ፍርያት' : (lang === 'om' ? 'Ilaalcha Meeshaa' : 'معاينة المنتج')))}
+                      </span>
+                    </div>
+
+                    {/* INTERACTIVE HIGH-FIDELITY MARKETING VIDEO PLAYER */}
+                    <SimulatedVideoPlayer videoPlaceholderTheme={selectedListing.videoPlaceholderTheme} />
+
+                    {/* LISTING DESCRIPTION BODY */}
+                    <div className="space-y-2 text-xs">
+                      <p className="text-stone-650 font-sans leading-relaxed tracking-wide font-medium">
+                        {getLocalizedData(selectedListing, 'description', lang)}
+                      </p>
+                      
+                      {selectedListing.features && selectedListing.features.length > 0 && (
+                        <div className="bg-white p-3 rounded-2xl border border-stone-200 space-y-1.5 shadow-xs">
+                          <div className="text-[10px] text-stone-500 font-bold uppercase tracking-wider">{t('specificationChecklist')}</div>
+                          {getLocalizedArray(selectedListing, 'features', lang).map((feature, fIdx) => (
+                            <div key={fIdx} className="flex items-center gap-2 text-stone-700 font-medium">
+                              <CheckCircle2 size={11} className="text-emerald-700 shrink-0" />
+                              <span>{feature}</span>
+                            </div>
+                          ))}
                         </div>
-                      ))
-                    ) : (
-                      <p className="text-center text-[10px] text-stone-400 py-2">No reviews available yet. Be the first to verify quality purchase details!</p>
-                    )}
-                  </div>
-                </div>
+                      )}
 
-                {/* SAFETY ALERTS: IMMEDIATELY SUSPEND SHOP REPORTING MODULE */}
-                <div className="pt-2 border-t border-stone-200 shrink-0">
-                  <button 
-                    onClick={() => handleReportAndSuspend(selectedListing)}
-                    className="w-full bg-red-50 hover:bg-red-100/80 text-red-600 font-bold text-xs py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-colors border border-red-200 cursor-pointer"
-                  >
-                    <ShieldAlert size={14} /> 🚨 {t('reportVendor')}
-                  </button>
-                </div>
+                      {selectedListing.requirements && selectedListing.requirements.length > 0 && (
+                        <div className="bg-white p-3 rounded-2xl border border-stone-200/80 space-y-1.5 shadow-xs">
+                          <div className="text-[10px] text-stone-550 font-extrabold uppercase tracking-wide">{t('jobRequirements')}</div>
+                          {getLocalizedArray(selectedListing, 'requirements', lang).map((req, rIdx) => (
+                            <div key={rIdx} className="flex items-center gap-2 text-stone-700 font-medium">
+                              <span className="w-1.5 h-1.5 bg-[#C5A059] rounded-full shrink-0"></span>
+                              <span>{req}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* PRIMARY ACTIONS PANEL (Buy / Pay Rent with .chapa-gradient class integration) */}
+                    <div className="flex gap-2.5 shrink-0 select-none">
+                      <button 
+                        onClick={() => handleInstantPurchase(selectedListing)}
+                        className="flex-1 bg-[#1E3A1A] text-white hover:opacity-95 text-xs py-3 rounded-xl font-bold transition-all shadow-md active:scale-95 cursor-pointer"
+                      >
+                        {t('instantPurchase')}
+                      </button>
+                      <button 
+                        onClick={() => handleChapaRentPayment(selectedListing)}
+                        className="bg-stone-850 hover:bg-stone-900 hover:opacity-95 text-white text-xs px-3.5 py-3 rounded-xl font-bold transition-all chapa-gradient shadow-md flex items-center gap-1.5 border border-amber-500/20 cursor-pointer"
+                      >
+                        {t('payRent')}
+                      </button>
+                    </div>
+
+                    {/* UPGRADE FEATURES: VISIT SCHEDULER & DIGITAL PROMO BUSINESS CARD GENERATOR */}
+                    <div className="grid grid-cols-2 gap-2.5 shrink-0 select-none">
+                      <button 
+                        type="button"
+                        onClick={() => setActiveBookingListing(selectedListing)}
+                        className="flex-1 py-2.5 bg-[#FAF9F6] border border-[#1E3A1A]/20 hover:bg-stone-50 text-stone-800 text-[10px] font-black uppercase rounded-xl shadow-2xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                      >
+                        📅 Schedule Visit / ጉብኝት
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => setActiveBusinessCardListing(selectedListing)}
+                        className="flex-1 py-2.5 bg-gradient-to-r from-amber-500/10 to-amber-500/20 border border-amber-500/40 hover:bg-amber-500/30 text-stone-900 text-[10px] font-black uppercase rounded-xl shadow-2xs transition-colors flex items-center justify-center gap-1 cursor-pointer font-sans"
+                      >
+                        🎴 Business Card / የሱቅ ካርድ
+                      </button>
+                    </div>
+
+                    {/* DIRECT ACTIVE STAR RATING LOG & REVIEW SUBMISSION INPUTS */}
+                    <div className="p-4 bg-white rounded-2xl border border-stone-200 shadow-sm">
+                      <h4 className="text-xs font-bold text-stone-805 mb-2 flex items-center justify-between">
+                        <span>{t('averageUserReviews')}</span>
+                        <span className="text-[11px] text-[#C5A059] font-mono font-black">{selectedListing.rating} / 5.0 (★)</span>
+                      </h4>
+
+                      {/* Rating Selector */}
+                      <form onSubmit={(e) => handleReviewSubmission(e, selectedListing.id)} className="space-y-3">
+                        <div className="flex gap-1.5 items-center select-none">
+                          <span className="text-[10px] text-stone-400 font-bold mr-1">{t('yourRating')}</span>
+                          {[1, 2, 3, 4, 5].map(starIdx => (
+                            <button
+                              key={starIdx}
+                              type="button"
+                              onClick={() => setUserRating(starIdx)}
+                              className="focus:outline-none cursor-pointer"
+                            >
+                              <Star 
+                                size={16} 
+                                className={`${starIdx <= userRating ? 'text-[#C5A059] fill-[#C5A059]' : 'text-stone-300'} hover:scale-110 transition-transform`} 
+                              />
+                            </button>
+                          ))}
+                        </div>
+
+                        <div className="relative">
+                          <input 
+                            type="text"
+                            placeholder={t('writeReviewPlaceholder')}
+                            value={textReview}
+                            onChange={(e) => setTextReview(e.target.value)}
+                            className="w-full bg-stone-50 border border-stone-200 focus:border-[#1E3A1A]/40 text-[11px] px-3.5 py-2.5 rounded-xl text-stone-800 outline-none pr-14 placeholder-stone-400 focus:ring-1 focus:ring-[#1E3A1A]/30"
+                          />
+                          <button 
+                            type="submit"
+                            className="absolute right-1.5 top-[5px] bg-[#1E3A1A] hover:bg-[#1E3A1A]/90 text-white font-bold text-[9px] px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
+                          >
+                            {t('postBtn')}
+                          </button>
+                        </div>
+                      </form>
+
+                      {/* Dynamic review listing elements */}
+                      <div className="mt-3.5 space-y-2.5 max-h-[140px] overflow-y-auto pr-1">
+                        {selectedListing.reviews && selectedListing.reviews.length > 0 ? (
+                          selectedListing.reviews.map(rev => (
+                            <div key={rev.id} className="border-t border-stone-200 pt-2 text-xs text-stone-800">
+                              <div className="flex justify-between items-center text-[10px] text-stone-400 mb-0.5 font-sans">
+                                <span className="font-bold text-[#C5A059]">{rev.user}</span>
+                                <span>{rev.date}</span>
+                              </div>
+                              <div className="flex gap-1 mb-1">
+                                {Array.from({ length: 5 }).map((_, s) => (
+                                  <Star key={s} size={8} className={s < rev.rating ? 'text-[#C5A059] fill-[#C5A059]' : 'text-stone-200'} />
+                                ))}
+                              </div>
+                              <p className="text-stone-605 font-serif leading-relaxed text-[11px]">&ldquo;{rev.text}&rdquo;</p>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-center text-[10px] text-stone-400 py-2">No reviews available yet. Be the first to verify quality purchase details!</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* SAFETY ALERTS: IMMEDIATELY SUSPEND SHOP REPORTING MODULE */}
+                    <div className="pt-2 border-t border-stone-200 shrink-0">
+                      <button 
+                        onClick={() => handleReportAndSuspend(selectedListing)}
+                        className="w-full bg-red-50 hover:bg-red-100/80 text-red-600 font-bold text-xs py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-colors border border-red-200 cursor-pointer"
+                      >
+                        <ShieldAlert size={14} /> 🚨 {t('reportVendor')}
+                      </button>
+                    </div>
+                  </>
+                )}
 
               </motion.div>
             </>
@@ -8564,169 +9100,6 @@ Thank you for supporting digital commerce in Ethiopia!
             />
           )}
 
-          {/* IMAGE SEARCH MODAL */}
-          <AnimatePresence>
-            {isImageSearchOpen && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs font-sans">
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  className={`w-full max-w-lg rounded-3xl overflow-hidden border shadow-2xl relative flex flex-col max-h-[90vh] ${
-                    isDarkMode ? 'bg-zinc-900 border-zinc-800 text-zinc-100' : 'bg-white border-stone-200 text-stone-850'
-                  }`}
-                >
-                  {/* Header */}
-                  <div className="p-4 border-b border-stone-100 dark:border-zinc-800 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="p-2 bg-[#1E3A1A]/10 dark:bg-amber-400/15 rounded-xl text-[#C5A059]">
-                        <Camera size={20} className="animate-pulse" />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-black tracking-tight">
-                          {lang === 'en' ? 'Every-Zone AI Visual Product Finder' : 'የኤቭሪ-ዞን AI ምስላዊ ምርት መፈለጊያ'}
-                        </h3>
-                        <p className="text-[10px] opacity-65 leading-tight">
-                          {lang === 'en' ? 'Upload or select any product image to find matching marketplace items' : 'የምርት ፎቶ በመስቀል በገበያችን ውስጥ ያሉትን ተመሳሳይ እቃዎች ያግኙ'}
-                        </p>
-                      </div>
-                    </div>
-                    <button 
-                      onClick={() => setIsImageSearchOpen(false)}
-                      className="p-1.5 rounded-full hover:bg-stone-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-
-                  {/* Body */}
-                  <div className="p-6 space-y-5 overflow-y-auto text-left">
-                    {/* Drag and Drop Zone */}
-                    <div
-                      onDragOver={(e) => { e.preventDefault(); }}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-                          const file = e.dataTransfer.files[0];
-                          const reader = new FileReader();
-                          reader.onloadend = () => {
-                            handleImageSearch(reader.result as string);
-                          };
-                          reader.readAsDataURL(file);
-                        }
-                      }}
-                      className={`p-8 border-2 border-dashed rounded-2xl text-center flex flex-col items-center justify-center space-y-3 cursor-pointer transition-all duration-200 ${
-                        isDarkMode 
-                          ? 'border-zinc-800 bg-zinc-950/40 hover:border-[#C5A059]' 
-                          : 'border-stone-200 bg-stone-50/50 hover:border-[#C5A059]'
-                      }`}
-                    >
-                      <div className="p-3 bg-white dark:bg-zinc-900 rounded-2xl border border-stone-200/50 dark:border-zinc-800 shadow-sm">
-                        <Camera size={24} className="text-[#C5A059]" />
-                      </div>
-                      
-                      <div className="space-y-1">
-                        <span className="text-[11.5px] font-bold block">
-                          {lang === 'en' ? 'Drag & drop image here, or click to browse' : 'ምስሉን እዚህ ይጎትቱት ወይም ይምረጡት'}
-                        </span>
-                        <span className="text-[9.5px] opacity-50 block max-w-xs mx-auto leading-normal">
-                          {lang === 'en' ? 'Supports PNG, JPG, or WEBP (Max 10MB)' : 'PNG, JPG ወይም WEBP ምስሎች (ከ 10MB በታች)'}
-                        </span>
-                      </div>
-
-                      <label className="px-3.5 py-1.5 bg-[#1E3A1A] text-white rounded-xl text-[10.5px] font-bold uppercase cursor-pointer hover:bg-emerald-850 active:scale-95 transition-all">
-                        {lang === 'en' ? 'Browse Files' : 'ፎቶ ምረጥ'}
-                        <input 
-                          type="file"
-                          className="hidden"
-                          accept="image/*"
-                          onChange={(e) => {
-                            if (e.target.files && e.target.files[0]) {
-                              const file = e.target.files[0];
-                              const reader = new FileReader();
-                              reader.onloadend = () => {
-                                handleImageSearch(reader.result as string);
-                              };
-                              reader.readAsDataURL(file);
-                            }
-                          }}
-                        />
-                      </label>
-                    </div>
-
-                    {/* Loader */}
-                    {imageSearchLoading && (
-                      <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-center space-y-2">
-                        <RefreshCw className="animate-spin mx-auto text-amber-500" size={20} />
-                        <p className="text-xs font-bold text-amber-500 animate-pulse">
-                          {lang === 'en' ? 'AI Vision Model analyzing image structures...' : 'AI ምስላዊ መፈለጊያው ምርቱን በመተንተን ላይ ነው...'}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Custom High-Quality Simulation Presets for Testing */}
-                    <div className="space-y-2.5">
-                      <div className="flex justify-between items-center">
-                        <span className="text-[11px] font-extrabold uppercase text-amber-500 tracking-wider">
-                          🎁 {lang === 'en' ? 'High-fidelity Demo Images' : 'ለሙከራ የሚሆኑ ምስሎች'}
-                        </span>
-                        <span className="text-[8px] bg-amber-500/10 text-amber-500 px-1.5 py-0.5 rounded-full uppercase font-mono">1-Click Test</span>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-2.5">
-                        {/* Preset 1: Habesha Dress */}
-                        <button
-                          onClick={() => {
-                            handleImageSearch("data:image/jpeg;base64,habeshakemisdummydata123456");
-                          }}
-                          className={`p-2 rounded-xl border text-left flex gap-2.5 items-center cursor-pointer transition-all ${
-                            isDarkMode 
-                              ? 'bg-zinc-950/40 border-zinc-800 hover:border-amber-500' 
-                              : 'bg-stone-50 border-stone-200 hover:border-[#1E3A1A]'
-                          }`}
-                        >
-                          <img 
-                            src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=200" 
-                            alt="Habesha" 
-                            className="w-10 h-10 rounded-lg object-cover border"
-                            referrerPolicy="no-referrer"
-                          />
-                          <div className="min-w-0">
-                            <h5 className="text-[10px] font-bold truncate">Habesha Kemis</h5>
-                            <p className="text-[8px] opacity-60">Traditional Wear</p>
-                          </div>
-                        </button>
-
-                        {/* Preset 2: iPhone */}
-                        <button
-                          onClick={() => {
-                            handleImageSearch("data:image/jpeg;base64,iphonedummydata12345");
-                          }}
-                          className={`p-2 rounded-xl border text-left flex gap-2.5 items-center cursor-pointer transition-all ${
-                            isDarkMode 
-                              ? 'bg-zinc-950/40 border-zinc-800 hover:border-amber-500' 
-                              : 'bg-stone-50 border-stone-200 hover:border-[#1E3A1A]'
-                          }`}
-                        >
-                          <img 
-                            src="https://images.unsplash.com/photo-1695048133142-1a20484d2569?auto=format&fit=crop&q=80&w=200" 
-                            alt="iPhone" 
-                            className="w-10 h-10 rounded-lg object-cover border"
-                            referrerPolicy="no-referrer"
-                          />
-                          <div className="min-w-0">
-                            <h5 className="text-[10px] font-bold truncate">iPhone 15 Pro</h5>
-                            <p className="text-[8px] opacity-60">Electronics</p>
-                          </div>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              </div>
-            )}
-          </AnimatePresence>
-
           {/* QR CODE SCANNER MODAL */}
           <QRCodeScanner
             isOpen={isQrSearchOpen}
@@ -8734,6 +9107,8 @@ Thank you for supporting digital commerce in Ethiopia!
             onScanSuccess={handleQRSearchSuccess}
             lang={lang}
             isDarkMode={isDarkMode}
+            handleImageSearch={handleImageSearch}
+            imageSearchLoading={imageSearchLoading}
           />
 
       </>

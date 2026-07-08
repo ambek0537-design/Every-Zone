@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Search, SlidersHorizontal, ShoppingCart, Heart, Store, Users, 
-  TrendingUp, HelpCircle, Plus, AlertTriangle, RefreshCw, BarChart3, Package, DollarSign, Sparkles, Filter, X, QrCode, Camera
+  TrendingUp, HelpCircle, Plus, AlertTriangle, RefreshCw, BarChart3, Package, DollarSign, Sparkles, Filter, X, QrCode, Camera,
+  Volume2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CategoriesList } from './categories/CategoriesList';
@@ -12,22 +13,86 @@ import { ProductDetailModal } from './products/ProductDetailModal';
 import { CartDrawer } from './cart/CartDrawer';
 import { WishlistDrawer } from './wishlist/WishlistDrawer';
 import { InventoryManager } from './inventory/InventoryManager';
+import { 
+  EZButton, EZCard, EZInput, EZSearchBar, EZBadge, EZSkeleton, EZTokens 
+} from '../../components/DesignSystem';
 
 interface MarketplaceHubProps {
   currentUserId?: string;
   isDarkMode?: boolean;
   lang?: string;
   onViewVendorProfile?: (vendorId: string) => void;
+  onSelectListing?: (listing: any) => void;
+  onSelectProduct?: (product: any) => void;
+  onToggleVoiceWelcome?: () => void;
+  isPlayingVoice?: boolean;
 }
 
 export const MarketplaceHub: React.FC<MarketplaceHubProps> = ({
   currentUserId = "u-2", // Default to Selamawit Tekle (Buyer)
   isDarkMode = true,
   lang = 'en',
-  onViewVendorProfile
+  onViewVendorProfile,
+  onSelectListing,
+  onSelectProduct,
+  onToggleVoiceWelcome,
+  isPlayingVoice = false
 }) => {
   // Navigation / Mode Switcher State
   const [hubMode, setHubMode] = useState<'buyer' | 'merchant'>('buyer');
+
+  // --- Recently viewed / Continue Browsing list ---
+  const [recentlyViewed, setRecentlyViewed] = useState<any[]>(() => {
+    try {
+      const stored = localStorage.getItem('ez_recently_viewed_v3');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      try {
+        const stored = localStorage.getItem('ez_recently_viewed_v3');
+        if (stored) {
+          setRecentlyViewed(JSON.parse(stored));
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    window.addEventListener('ez_recently_viewed_updated', handleUpdate);
+    return () => window.removeEventListener('ez_recently_viewed_updated', handleUpdate);
+  }, []);
+
+  const aiRecommendationHeading = useMemo(() => {
+    if (recentlyViewed.length > 0) {
+      const firstJob = recentlyViewed.find(x => x.type === 'agencies');
+      if (firstJob) {
+        return lang === 'am' 
+          ? `በዱባይ ስራ ፍላጎትዎ መሰረት... (Because you viewed Dubai jobs)`
+          : `Because you viewed Dubai jobs…`;
+      }
+      const firstPhone = recentlyViewed.find(x => x.title?.toLowerCase().includes('phone') || x.title?.toLowerCase().includes('iphone'));
+      if (firstPhone) {
+        return lang === 'am'
+          ? `የ iPhone ፍላጎትዎን መሰረት በማድረግ... (Because you searched iPhone)`
+          : `Because you searched iPhone…`;
+      }
+      const firstHouse = recentlyViewed.find(x => x.type === 'houses');
+      if (firstHouse) {
+        return lang === 'am'
+          ? `የአዲስ አበባ ቤቶች ፍላጎትዎ መሰረት... (Based on your interest in Addis housing)`
+          : `Based on your interest in Addis housing…`;
+      }
+    }
+    return lang === 'am' 
+      ? `በእርስዎ ፍላጎት ላይ የተመረጡ... (Based on your interests)`
+      : `Based on your interests…`;
+  }, [recentlyViewed, lang]);
+
+
 
   // Core Data Lists
   const [products, setProducts] = useState<any[]>([]);
@@ -703,19 +768,21 @@ export const MarketplaceHub: React.FC<MarketplaceHubProps> = ({
 
             {/* Wallet Balance, Wishlist & Basket Buttons */}
             <div className="flex items-center gap-3 w-full md:w-auto justify-end">
-              {/* Wallet Live HUD Button */}
-              <button
-                id="shop-wallet-hud-btn"
-                onClick={() => {
-                  alert(lang === 'en' 
-                    ? `💳 Escrow Wallet Status: Live Balance is ${walletBalance.toLocaleString()} ETB. Protected by Fayda decentralized escrow vault.` 
-                    : `💳 የዋስትና የኪስ ቦርሳ፡ ቀሪ ሂሳብዎ ${walletBalance.toLocaleString()} ETB ነው። በፋይዳ ዋስትና የተጠበቀ።`);
-                }}
-                className="bg-zinc-950 border border-zinc-800 hover:border-[#C5A059]/40 px-3.5 py-2.5 rounded-2xl text-xs font-black text-[#E2B755] flex items-center gap-2 cursor-pointer transition-all hover:scale-[1.02] shadow-lg active:scale-95"
-              >
-                <span>🪙</span>
-                <span className="font-mono tracking-wide">{walletBalance.toLocaleString()} ETB</span>
-              </button>
+              {onToggleVoiceWelcome && (
+                <button
+                  id="marketplace-voice-guide-btn"
+                  type="button"
+                  onClick={onToggleVoiceWelcome}
+                  title={lang === 'en' ? "Play/Stop Voice Guide Assistant" : "የድምፅ ረዳት ይጫወቱ ወይም ያቁሙ"}
+                  className={`p-2.5 rounded-2xl border flex items-center justify-center transition-all cursor-pointer shadow-md hover:scale-105 active:scale-95 ${
+                    isPlayingVoice 
+                      ? 'bg-emerald-500 border-emerald-600 text-white animate-pulse scale-105' 
+                      : 'bg-zinc-950 border-zinc-800 text-[#E2B755] hover:bg-zinc-900 hover:border-zinc-700'
+                  }`}
+                >
+                  <Volume2 className={`w-4.5 h-4.5 ${isPlayingVoice ? "animate-bounce" : ""}`} />
+                </button>
+              )}
 
               <button
                 id="toggle-wishlist-btn"
@@ -864,55 +931,87 @@ export const MarketplaceHub: React.FC<MarketplaceHubProps> = ({
             </div>
           </div>
 
-          {/* CONTINUE SHOPPING (Horizontal Cards Section) */}
+          {/* CONTINUE BROWSING (Horizontal Cards Section) */}
           <div className="space-y-4">
             <div className="flex items-center justify-between border-b border-zinc-900 pb-2">
               <div className="flex items-center gap-2">
                 <span className="text-[#C5A059]">✦</span>
                 <h3 className="text-sm font-black uppercase tracking-wider text-stone-200">
-                  Continue Shopping
+                  {lang === 'en' ? "Continue Browsing" : "ቀጥል ማሰስ"}
                 </h3>
               </div>
-              <span className="text-[10px] text-stone-500 font-bold uppercase tracking-wider">
-                Recents
+              <span className="text-[10px] text-stone-500 font-bold uppercase tracking-wider font-mono">
+                {lang === 'en' ? "Your History" : "ታሪክዎ"}
               </span>
             </div>
+
             <div className="flex items-center gap-4 overflow-x-auto pb-2 no-scrollbar scroll-smooth">
-              {/* Recently Browsed Card 1 */}
-              <div className="min-w-[260px] max-w-[280px] bg-[#131316]/70 border border-zinc-850 rounded-2xl p-3 flex items-center gap-3 shadow-md hover:border-[#C5A059]/30 transition-all cursor-pointer">
-                <div className="w-16 h-16 rounded-xl bg-zinc-950 overflow-hidden border border-zinc-800 shrink-0">
-                  <img src="https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&q=80&w=200" alt="Recent 1" className="w-full h-full object-cover" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h4 className="text-[11px] font-bold text-stone-300 truncate">Royal Habesha Handwoven Tilet</h4>
-                  <p className="text-[10px] text-[#C5A059] font-black mt-1">4,800 ETB</p>
-                  <span className="text-[8.5px] text-stone-500 block mt-0.5 font-mono">Bole Wear • Verified</span>
-                </div>
-              </div>
-
-              {/* Recently Browsed Card 2 */}
-              <div className="min-w-[260px] max-w-[280px] bg-[#131316]/70 border border-zinc-850 rounded-2xl p-3 flex items-center gap-3 shadow-md hover:border-[#C5A059]/30 transition-all cursor-pointer">
-                <div className="w-16 h-16 rounded-xl bg-zinc-950 overflow-hidden border border-zinc-800 shrink-0">
-                  <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&q=80&w=200" alt="Recent 2" className="w-full h-full object-cover" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h4 className="text-[11px] font-bold text-stone-300 truncate">Organic washed Sidamo Roast</h4>
-                  <p className="text-[10px] text-[#C5A059] font-black mt-1">1,250 ETB</p>
-                  <span className="text-[8.5px] text-stone-500 block mt-0.5 font-mono">Makeda Coffee • Verified</span>
-                </div>
-              </div>
-
-              {/* Recently Browsed Card 3 */}
-              <div className="min-w-[260px] max-w-[280px] bg-[#131316]/70 border border-zinc-850 rounded-2xl p-3 flex items-center gap-3 shadow-md hover:border-[#C5A059]/30 transition-all cursor-pointer">
-                <div className="w-16 h-16 rounded-xl bg-zinc-950 overflow-hidden border border-zinc-800 shrink-0">
-                  <img src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=200" alt="Recent 3" className="w-full h-full object-cover" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h4 className="text-[11px] font-bold text-stone-300 truncate">Active Sport Pro Red Blend</h4>
-                  <p className="text-[10px] text-[#C5A059] font-black mt-1">6,900 ETB</p>
-                  <span className="text-[8.5px] text-stone-500 block mt-0.5 font-mono">Anbessa Outlet • Fast Delivery</span>
-                </div>
-              </div>
+              {recentlyViewed.length > 0 ? (
+                recentlyViewed.map((item, idx) => (
+                  <motion.div
+                    key={item.id + '-' + idx}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => {
+                      if (item.type === 'shop' && onSelectProduct) {
+                        onSelectProduct(item.raw || item);
+                      } else if ((item.type === 'houses' || item.type === 'agencies') && onSelectListing) {
+                        onSelectListing(item.raw || item);
+                      }
+                    }}
+                    className="min-w-[260px] max-w-[280px] bg-[#131316]/70 border border-zinc-850 rounded-2xl p-3 flex items-center gap-3 shadow-md hover:border-[#C5A059]/30 transition-all cursor-pointer shrink-0"
+                  >
+                    <div className="w-16 h-16 rounded-xl bg-zinc-950 overflow-hidden border border-zinc-800 shrink-0">
+                      <img 
+                        src={item.image || "https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&q=80&w=200"} 
+                        alt={item.title} 
+                        className="w-full h-full object-cover" 
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1">
+                        <span className="text-[8px] bg-zinc-900 border border-zinc-800 px-1 py-0.2 rounded text-amber-500 font-bold uppercase font-mono">
+                          {item.type === 'shop' ? 'Shop' : item.type === 'houses' ? 'House' : 'Job'}
+                        </span>
+                      </div>
+                      <h4 className="text-[11px] font-bold text-stone-300 truncate mt-1">
+                        {lang === 'en' ? item.title : item.titleAm || item.title}
+                      </h4>
+                      <p className="text-[10px] text-[#C5A059] font-black mt-0.5">
+                        {lang === 'en' ? item.price : item.priceAm || item.price}
+                      </p>
+                      <span className="text-[8.5px] text-stone-500 block truncate font-mono">
+                        {lang === 'en' ? item.location : item.locationAm || item.location}
+                      </span>
+                    </div>
+                  </motion.div>
+                ))
+              ) : (
+                /* Beautiful design fallback if no history exists yet */
+                <>
+                  <div className="min-w-[260px] max-w-[280px] bg-[#131316]/40 border border-zinc-850/50 rounded-2xl p-3 flex items-center gap-3 opacity-60">
+                    <div className="w-16 h-16 rounded-xl bg-zinc-950/60 border border-zinc-850 shrink-0 flex items-center justify-center text-stone-600 font-mono text-xs">
+                      ☕
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h4 className="text-[11px] font-bold text-stone-500 truncate">No history yet</h4>
+                      <p className="text-[10px] text-stone-600 font-black mt-1">Browse items to fill</p>
+                      <span className="text-[8.5px] text-stone-600 block mt-0.5 font-mono">Every-zone Smart Sync</span>
+                    </div>
+                  </div>
+                  <div className="min-w-[260px] max-w-[280px] bg-[#131316]/40 border border-zinc-850/50 rounded-2xl p-3 flex items-center gap-3 opacity-60">
+                    <div className="w-16 h-16 rounded-xl bg-zinc-950/60 border border-zinc-850 shrink-0 flex items-center justify-center text-stone-600 font-mono text-xs">
+                      🏡
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h4 className="text-[11px] font-bold text-stone-500 truncate">No real estate viewed</h4>
+                      <p className="text-[10px] text-stone-600 font-black mt-1">Select a villa or condo</p>
+                      <span className="text-[8.5px] text-stone-600 block mt-0.5 font-mono">Every-zone Smart Sync</span>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -922,10 +1021,10 @@ export const MarketplaceHub: React.FC<MarketplaceHubProps> = ({
               <div className="flex items-center gap-2">
                 <span className="text-[#C5A059]">📍</span>
                 <h3 className="text-sm font-black uppercase tracking-wider text-stone-200">
-                  Popular Near You
+                  {lang === 'en' ? "Popular Near You" : "በአቅራቢያዎ ተወዳጅ"}
                 </h3>
               </div>
-              <span className="text-[10px] bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded text-amber-500 font-extrabold">
+              <span className="text-[10px] bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded text-amber-500 font-extrabold font-mono">
                 Bole, Addis Ababa
               </span>
             </div>
@@ -936,17 +1035,28 @@ export const MarketplaceHub: React.FC<MarketplaceHubProps> = ({
                 return (
                   <div 
                     key={p.id}
-                    onClick={() => setActiveProductSlug(p.slug)}
+                    onClick={() => {
+                      if (onSelectProduct) {
+                        onSelectProduct(p);
+                      } else {
+                        setActiveProductSlug(p.slug);
+                      }
+                    }}
                     className="bg-[#131316]/60 border border-zinc-850 hover:border-[#C5A059]/30 p-2.5 rounded-2xl transition-all shadow-lg cursor-pointer group"
                   >
                     <div className="aspect-[4/3] w-full bg-zinc-950 rounded-xl overflow-hidden relative border border-zinc-900">
-                      <img src={p.images?.[0]?.imageUrl || 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&q=80&w=200'} alt={p.title} className="w-full h-full object-cover group-hover:scale-102 transition" />
+                      <img 
+                        src={p.images?.[0]?.imageUrl || 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&q=80&w=200'} 
+                        alt={p.title} 
+                        className="w-full h-full object-cover group-hover:scale-102 transition" 
+                        referrerPolicy="no-referrer"
+                      />
                       <span className="absolute bottom-2 left-2 bg-black/85 backdrop-blur-md border border-[#C5A059]/35 text-[#E2B755] text-[8.5px] font-black px-2 py-0.5 rounded-md font-mono">
                         {distance}
                       </span>
                     </div>
                     <div className="mt-2 text-left">
-                      <h4 className="text-[11px] font-bold text-stone-300 truncate leading-snug">{p.title}</h4>
+                      <h4 className="text-[11px] font-bold text-stone-300 truncate leading-snug">{lang === 'en' ? p.title : p.titleAm || p.title}</h4>
                       <p className="text-[10px] text-[#C5A059] font-black mt-0.5">{(p.discountPrice || p.price).toLocaleString()} ETB</p>
                     </div>
                   </div>
@@ -955,18 +1065,18 @@ export const MarketplaceHub: React.FC<MarketplaceHubProps> = ({
             </div>
           </div>
 
-          {/* RECOMMENDED FOR YOU (AI Section - Luxury styled) */}
+          {/* RECOMMENDED FOR YOU (AI Section - Luxury styled with dynamic context-aware headers) */}
           <div className="bg-gradient-to-r from-zinc-950 via-[#191510] to-zinc-950 border border-[#C5A059]/20 rounded-[28px] p-5 sm:p-6 space-y-4 shadow-xl">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#C5A059]/10 pb-3">
               <div className="space-y-0.5">
                 <div className="flex items-center gap-2">
                   <span className="text-[#E2B755] animate-pulse">✦</span>
                   <h3 className="text-xs font-black uppercase tracking-widest text-[#E2B755] font-mono">
-                    AI Curated Matching
+                    {lang === 'en' ? "AI Curated Matching" : "በአይ የተመረጠ ተዛማጅ"}
                   </h3>
                 </div>
                 <h4 className="text-md sm:text-lg font-black text-stone-100 tracking-tight leading-none">
-                  Tailored Stylist Match for Selamawit
+                  {aiRecommendationHeading}
                 </h4>
               </div>
               <span className="text-[10px] bg-[#C5A059]/15 border border-[#C5A059]/30 text-[#E2B755] px-3 py-1 rounded-full font-bold uppercase tracking-wider shrink-0 self-start sm:self-auto font-mono">
@@ -979,12 +1089,12 @@ export const MarketplaceHub: React.FC<MarketplaceHubProps> = ({
               <div 
                 onClick={() => {
                   const match = products.find(p => p.id === 'prod-2') || products[0];
-                  if (match) setActiveProductSlug(match.slug);
+                  if (match && onSelectProduct) onSelectProduct(match);
                 }}
                 className="bg-[#111114]/90 border border-zinc-850 hover:border-[#C5A059]/30 p-3.5 rounded-2xl flex gap-3.5 cursor-pointer group"
               >
                 <div className="w-20 h-20 bg-zinc-950 rounded-xl overflow-hidden shrink-0 relative border border-zinc-900">
-                  <img src="https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&q=80&w=200" alt="Curated 1" className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+                  <img src="https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&q=80&w=200" alt="Curated 1" className="w-full h-full object-cover group-hover:scale-105 transition duration-300" referrerPolicy="no-referrer" />
                   <span className="absolute top-1.5 left-1.5 bg-[#C5A059] text-zinc-950 text-[8px] font-black px-1.5 py-0.2 rounded font-mono">
                     98% AFFINITY
                   </span>
@@ -1005,12 +1115,12 @@ export const MarketplaceHub: React.FC<MarketplaceHubProps> = ({
               <div 
                 onClick={() => {
                   const match = products.find(p => p.id === 'prod-3') || products[1];
-                  if (match) setActiveProductSlug(match.slug);
+                  if (match && onSelectProduct) onSelectProduct(match);
                 }}
                 className="bg-[#111114]/90 border border-zinc-850 hover:border-[#C5A059]/30 p-3.5 rounded-2xl flex gap-3.5 cursor-pointer group"
               >
                 <div className="w-20 h-20 bg-zinc-950 rounded-xl overflow-hidden shrink-0 relative border border-zinc-900">
-                  <img src="https://images.unsplash.com/photo-1497034825429-c343d7c6a68f?auto=format&fit=crop&q=80&w=200" alt="Curated 2" className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+                  <img src="https://images.unsplash.com/photo-1497034825429-c343d7c6a68f?auto=format&fit=crop&q=80&w=200" alt="Curated 2" className="w-full h-full object-cover group-hover:scale-105 transition duration-300" referrerPolicy="no-referrer" />
                   <span className="absolute top-1.5 left-1.5 bg-[#C5A059] text-zinc-950 text-[8px] font-black px-1.5 py-0.2 rounded font-mono">
                     94% AFFINITY
                   </span>

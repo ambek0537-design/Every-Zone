@@ -80,15 +80,6 @@ export function SettingsScreen({
     setStoreDesc('');
   };
 
-  // --- Security & Privacy States ---
-  const [isTwoFactor, setIsTwoFactor] = useState<boolean>(() => {
-    return localStorage.getItem('ez_security_2fa') === 'true';
-  });
-  const [isPrivateProfile, setIsPrivateProfile] = useState<boolean>(() => {
-    return localStorage.getItem('ez_security_private') === 'true';
-  });
-  const [blockedUsers, setBlockedUsers] = useState<string[]>(['Unverified Buyer #102', 'Suspicious Vendor #941']);
-
 
   return (
     <motion.div 
@@ -658,92 +649,7 @@ export function SettingsScreen({
         )}
       </div>
 
-      {/* SECURITY, 2FA, PRIVACY & BLOCKED USERS */}
-      <div className={`p-4 rounded-3xl border shadow-md transition-all duration-300 text-left ${
-        isDarkMode ? 'bg-zinc-900 border-zinc-800 text-zinc-100' : 'bg-white border-stone-200 text-stone-850'
-      }`}>
-        <h3 className="text-xs font-black uppercase tracking-wider text-amber-500 mb-3 flex items-center gap-2 border-b pb-2 border-stone-100 dark:border-zinc-850">
-          🛡️ {lang === 'en' ? 'Security & Corporate Privacy' : 'የደህንነትና ምስጢራዊነት ቅንብሮች'}
-        </h3>
 
-        <div className="space-y-4">
-          {/* 2FA Switch */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <span className="text-xs font-bold block">{lang === 'en' ? 'Fayda SMS Two-Factor Auth (2FA)' : 'ባለሁለት ደረጃ ማረጋገጫ (2FA)'}</span>
-              <p className="text-[10px] text-stone-450">
-                {lang === 'en' ? 'Settle escrow withdrawals securely using authorized SMS codes' : 'የገንዘብ ወጪ ሲያደርጉ በስልክዎ የደህንነት ኮድ እንዲላክ ያድርጉ'}
-              </p>
-            </div>
-            <button
-              onClick={() => {
-                const nextVal = !isTwoFactor;
-                setIsTwoFactor(nextVal);
-                localStorage.setItem('ez_security_2fa', nextVal ? 'true' : 'false');
-              }}
-              className={`text-xs px-3 py-1.5 rounded-xl border font-black transition cursor-pointer select-none ${
-                isTwoFactor 
-                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' 
-                  : 'bg-stone-50 dark:bg-zinc-950 border-stone-250 dark:border-zinc-800 text-stone-500'
-              }`}
-            >
-              {isTwoFactor ? '✓ Active' : 'Off'}
-            </button>
-          </div>
-
-          {/* Privacy Switch */}
-          <div className="flex items-center justify-between pt-3 border-t border-stone-100 dark:border-zinc-850">
-            <div className="space-y-0.5">
-              <span className="text-xs font-bold block">{lang === 'en' ? 'Private Profile Mode' : 'ምስጢራዊ መለያ ሁኔታ'}</span>
-              <p className="text-[10px] text-stone-450">
-                {lang === 'en' ? 'Hide your scanning history and wishlists from other vendors' : 'የእርስዎን የፍለጋና የፍላጎት ዝርዝሮች ከሌሎች ነጋዴዎች ደብቅ'}
-              </p>
-            </div>
-            <button
-              onClick={() => {
-                const nextVal = !isPrivateProfile;
-                setIsPrivateProfile(nextVal);
-                localStorage.setItem('ez_security_private', nextVal ? 'true' : 'false');
-              }}
-              className={`text-xs px-3 py-1.5 rounded-xl border font-black transition cursor-pointer select-none ${
-                isPrivateProfile 
-                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' 
-                  : 'bg-stone-50 dark:bg-zinc-950 border-stone-250 dark:border-zinc-800 text-stone-500'
-              }`}
-            >
-              {isPrivateProfile ? '✓ Private' : 'Public'}
-            </button>
-          </div>
-
-          {/* Blocked Users Section */}
-          <div className="pt-3 border-t border-stone-100 dark:border-zinc-850 space-y-2">
-            <span className="text-xs font-bold block">{lang === 'en' ? 'Blocked Users / Spam Nodes' : 'የታገዱ ሰዎች ዝርዝር'}</span>
-            {blockedUsers.length === 0 ? (
-              <p className="text-[10px] text-stone-500">{lang === 'en' ? 'No blocked users.' : 'ምንም የታገደ ሰው የለም።'}</p>
-            ) : (
-              <div className="space-y-1.5">
-                {blockedUsers.map((user) => (
-                  <div 
-                    key={user}
-                    className="flex justify-between items-center p-2 rounded-xl bg-stone-50 dark:bg-zinc-950 border border-stone-200 dark:border-zinc-850 text-[11px]"
-                  >
-                    <span className="text-stone-300 font-mono">{user}</span>
-                    <button
-                      onClick={() => {
-                        setBlockedUsers(prev => prev.filter(u => u !== user));
-                        alert(`User "${user}" successfully unblocked.`);
-                      }}
-                      className="text-[9.5px] font-black uppercase text-amber-500 hover:text-amber-400 cursor-pointer transition-colors"
-                    >
-                      Unblock
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
 
       {/* PROFILE EXTENSIONS: LINKED ACCOUNTS, ACTIVITY LOGS, QUICK SUPPORT */}
       <div className={`p-4 rounded-3xl border shadow-md transition-all duration-300 text-left space-y-4 ${

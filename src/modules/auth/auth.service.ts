@@ -140,4 +140,42 @@ export class AuthService {
     const { password: _, ...userWithoutPassword } = user as any;
     return userWithoutPassword;
   }
+
+  async handleGoogleAuth(email: string, fullName: string, avatarUrl?: string) {
+    if (!email) {
+      throw new Error("Google email is required.");
+    }
+
+    // 1. Check if user already exists
+    let user = await this.authRepository.findByEmail(email);
+
+    if (!user) {
+      // 2. Create user with auto-generated unique phone to satisfy database constraints
+      const randomId = Math.floor(1000 + Math.random() * 9000);
+      const randomPhone = `google_oauth_${Date.now()}_${randomId}`;
+      const randomPassword = hashPassword(`google_secret_pass_${Date.now()}_${randomId}`);
+      
+      user = await this.authRepository.createUser({
+        email,
+        fullName,
+        phone: randomPhone,
+        password: randomPassword,
+        passwordHash: randomPassword,
+        role: "BUYER",
+      });
+    }
+
+    // 3. Generate Session Token (JWT)
+    const token = generateToken({
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+    });
+
+    const { password: _, ...userWithoutPassword } = user as any;
+    return {
+      token,
+      user: userWithoutPassword,
+    };
+  }
 }

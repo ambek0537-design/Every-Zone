@@ -1,6 +1,7 @@
-import React from 'react';
-import { Star, Heart, Eye, ShoppingCart } from 'lucide-react';
+import React, { useState } from 'react';
+import { Star, Heart, Eye, ShoppingCart, Share2 } from 'lucide-react';
 import { DiscountBadge } from '../discounts/DiscountBadge';
+import { OptimizedImage } from '../../../components/OptimizedImage';
 
 interface ProductImage {
   id: string;
@@ -43,8 +44,30 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   onToggleWishlist,
   onAddToCart
 }) => {
+  const [copiedShare, setCopiedShare] = useState(false);
   const mainImage = product.images?.[0]?.imageUrl || 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&q=80&w=600';
   const isOutOfStock = product.quantity <= 0 || product.status === 'OUT_OF_STOCK';
+
+  // Deterministic delivery time based on ID
+  const deliveryTime = React.useMemo(() => {
+    let hash = 0;
+    for (let i = 0; i < product.id.length; i++) {
+      hash = product.id.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return hash % 2 === 0 ? "Arrives Tomorrow" : "Pickup Today";
+  }, [product.id]);
+
+  // Handle Copy / Share Product Link
+  const handleShareClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const url = `${window.location.origin}/product/${product.slug}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedShare(true);
+      setTimeout(() => setCopiedShare(false), 2000);
+    }).catch(() => {
+      alert(`Share: ${product.title}`);
+    });
+  };
 
   // Deterministic sold count for realistic feel
   const soldCount = React.useMemo(() => {
@@ -71,11 +94,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     >
       {/* Upper Thumbnail Section */}
       <div className="relative aspect-[4/3] w-full bg-[#09090b] overflow-hidden">
-        <img
+        <OptimizedImage
           src={mainImage}
           alt={product.title}
-          className="w-full h-full object-cover transition-all duration-750 group-hover:scale-105"
-          referrerPolicy="no-referrer"
+          aspectRatio="h-full w-full"
+          imgClassName="group-hover:scale-105"
         />
 
         {/* Backdrop gold sheen on hover */}
@@ -100,21 +123,36 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           )}
         </div>
 
-        {/* Wishlist Toggle overlay - Dark Luxury Glass style */}
-        <button
-          id={`wishlist-toggle-${product.id}`}
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleWishlist(product.id, e);
-          }}
-          className={`absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 shadow-md backdrop-blur-md border cursor-pointer ${
-            isWishlisted 
-              ? 'bg-[#C5A059] border-[#C5A059] text-zinc-950 scale-105 shadow-[#C5A059]/30' 
-              : 'bg-black/40 border-white/10 text-stone-300 hover:text-white hover:bg-black/60 hover:scale-105'
-          }`}
-        >
-          <Heart className={`w-3.5 h-3.5 ${isWishlisted ? 'fill-current' : ''}`} />
-        </button>
+        {/* Action button overlay stack */}
+        <div className="absolute top-3 right-3 flex flex-col gap-1.5 z-10">
+          <button
+            id={`wishlist-toggle-${product.id}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleWishlist(product.id, e);
+            }}
+            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 shadow-md backdrop-blur-md border cursor-pointer ${
+              isWishlisted 
+                ? 'bg-[#C5A059] border-[#C5A059] text-zinc-950 scale-105 shadow-[#C5A059]/30' 
+                : 'bg-black/40 border-white/10 text-stone-300 hover:text-white hover:bg-black/60 hover:scale-105'
+            }`}
+          >
+            <Heart className={`w-3.5 h-3.5 ${isWishlisted ? 'fill-current' : ''}`} />
+          </button>
+
+          <button
+            id={`share-button-${product.id}`}
+            onClick={handleShareClick}
+            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 shadow-md backdrop-blur-md border cursor-pointer ${
+              copiedShare 
+                ? 'bg-emerald-600 border-emerald-600 text-white scale-105 shadow-emerald-500/20' 
+                : 'bg-black/40 border-white/10 text-stone-300 hover:text-white hover:bg-black/60 hover:scale-105'
+            }`}
+            title="Share Product"
+          >
+            <Share2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
 
         {/* Modern Hover Sheen Button */}
         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all duration-200 z-5">
@@ -152,6 +190,19 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           <h3 className="text-xs font-bold text-stone-200 group-hover:text-[#E2B755] transition-colors duration-150 line-clamp-2 leading-snug">
             {product.title}
           </h3>
+
+          {/* Delivery Time Badge */}
+          <div className="flex items-center gap-1 text-[9px] pt-1 font-semibold">
+            {deliveryTime === "Arrives Tomorrow" ? (
+              <span className="flex items-center gap-1 text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                🚚 Arrives Tomorrow
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">
+                🏪 Pickup Today
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Sold Count & Price Bottom Line */}

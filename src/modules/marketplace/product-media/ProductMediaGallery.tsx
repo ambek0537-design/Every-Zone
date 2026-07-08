@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Play, Image as ImageIcon, Video as VideoIcon, ZoomIn, X, Heart, Star } from 'lucide-react';
+import { OptimizedImage } from '../../../components/OptimizedImage';
 
 interface ProductImage {
   id: string;
@@ -67,15 +68,14 @@ export const ProductMediaGallery: React.FC<ProductMediaGalleryProps> = ({ images
           />
         ) : (
           <div className="w-full h-full overflow-hidden relative">
-            <img 
+            <OptimizedImage 
               src={totalImages[activeIndex]?.imageUrl} 
               alt="Product media" 
-              className="w-full h-full object-cover transition-transform duration-100 ease-out"
+              aspectRatio="h-full w-full"
               style={{
                 transform: `scale(${zoomScale})`,
                 transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`
               }}
-              referrerPolicy="no-referrer"
             />
             {/* Quick zoom icon overlay */}
             <div className="absolute top-3 right-3 bg-neutral-900/85 backdrop-blur-md p-2 rounded-xl text-stone-300 opacity-0 group-hover:opacity-100 transition-opacity border border-neutral-800 pointer-events-none">
@@ -130,11 +130,10 @@ export const ProductMediaGallery: React.FC<ProductMediaGalleryProps> = ({ images
                   : 'border-neutral-850 hover:border-neutral-700'
               }`}
             >
-              <img 
+              <OptimizedImage 
                 src={img.imageUrl} 
                 alt="thumbnail" 
-                className="w-full h-full object-cover"
-                referrerPolicy="no-referrer"
+                aspectRatio="h-full w-full"
               />
             </button>
           ))}
@@ -167,7 +166,7 @@ export const ProductMediaGallery: React.FC<ProductMediaGalleryProps> = ({ images
               }}
               className="relative w-14 h-14 rounded-xl overflow-hidden bg-neutral-900 border border-neutral-850 flex-shrink-0 cursor-zoom-in hover:border-stone-600 transition"
             >
-              <img src={photo} alt="customer review" className="w-full h-full object-cover" />
+              <OptimizedImage src={photo} alt="customer review" aspectRatio="h-full w-full" />
               <div className="absolute bottom-0 inset-x-0 bg-black/60 py-0.5 text-[8px] text-center font-bold text-emerald-400">
                 ★ 5.0
               </div>

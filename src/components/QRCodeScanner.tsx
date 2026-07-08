@@ -32,10 +32,22 @@ interface QRCodeScannerProps {
   onScanSuccess: (result: ScanResult) => void;
   lang: 'en' | 'am';
   isDarkMode: boolean;
+  handleImageSearch?: (base64Image: string) => Promise<void>;
+  imageSearchLoading?: boolean;
+  initialTab?: 'image_search' | 'camera' | 'upload' | 'presets';
 }
 
-export function QRCodeScanner({ isOpen, onClose, onScanSuccess, lang, isDarkMode }: QRCodeScannerProps) {
-  const [activeTab, setActiveTab] = useState<'camera' | 'upload' | 'presets'>('presets');
+export function QRCodeScanner({ 
+  isOpen, 
+  onClose, 
+  onScanSuccess, 
+  lang, 
+  isDarkMode,
+  handleImageSearch,
+  imageSearchLoading,
+  initialTab = 'image_search'
+}: QRCodeScannerProps) {
+  const [activeTab, setActiveTab] = useState<'image_search' | 'camera' | 'upload' | 'presets'>(initialTab);
   const [cameraState, setCameraState] = useState<'idle' | 'loading' | 'active' | 'denied'>('idle');
   const [isScanning, setIsScanning] = useState(false);
   const [dragActive, setDragActive] = useState(false);
@@ -601,11 +613,23 @@ export function QRCodeScanner({ isOpen, onClose, onScanSuccess, lang, isDarkMode
         <div className="p-4 border-b border-stone-100 dark:border-zinc-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="p-2 bg-[#1E3A1A]/10 dark:bg-amber-400/15 rounded-xl text-[#C5A059]">
-              <QrCode size={20} className="animate-pulse" />
+              {activeTab === 'image_search' ? (
+                <Camera size={20} className="animate-pulse" />
+              ) : (
+                <QrCode size={20} className="animate-pulse" />
+              )}
             </div>
             <div>
-              <h3 className="text-sm font-black tracking-tight">{t.title}</h3>
-              <p className="text-[10px] opacity-65 leading-tight">{t.subtitle}</p>
+              <h3 className="text-sm font-black tracking-tight">
+                {activeTab === 'image_search' 
+                  ? (lang === 'en' ? 'Every-Zone AI Visual Product Finder' : 'የኤቭሪ-ዞን AI ምስላዊ ምርት መፈለጊያ')
+                  : t.title}
+              </h3>
+              <p className="text-[10px] opacity-65 leading-tight">
+                {activeTab === 'image_search'
+                  ? (lang === 'en' ? 'Upload or select any product image to find matching marketplace items' : 'የምርት ፎቶ በመስቀል በገበያችን ውስጥ ያሉትን ተመሳሳይ እቃዎች ያግኙ')
+                  : t.subtitle}
+              </p>
             </div>
           </div>
           <button 
@@ -617,10 +641,22 @@ export function QRCodeScanner({ isOpen, onClose, onScanSuccess, lang, isDarkMode
         </div>
 
         {/* Tab Selection */}
-        <div className="flex border-b border-stone-100 dark:border-zinc-800 text-xs font-bold">
+        <div className="flex border-b border-stone-100 dark:border-zinc-800 text-xs font-bold overflow-x-auto whitespace-nowrap">
           <button
+            type="button"
+            onClick={() => setActiveTab('image_search')}
+            className={`flex-1 py-3 px-2 text-center transition-colors border-b-2 ${
+              activeTab === 'image_search' 
+                ? 'border-[#C5A059] text-[#C5A059] bg-stone-50/50 dark:bg-zinc-950/20' 
+                : 'border-transparent text-stone-400 hover:text-stone-600'
+            }`}
+          >
+            🖼️ {lang === 'en' ? 'AI Image Search' : 'የምስል ፍለጋ'}
+          </button>
+          <button
+            type="button"
             onClick={() => setActiveTab('presets')}
-            className={`flex-1 py-3 text-center transition-colors border-b-2 ${
+            className={`flex-1 py-3 px-2 text-center transition-colors border-b-2 ${
               activeTab === 'presets' 
                 ? 'border-[#C5A059] text-[#C5A059] bg-stone-50/50 dark:bg-zinc-950/20' 
                 : 'border-transparent text-stone-400 hover:text-stone-600'
@@ -629,8 +665,9 @@ export function QRCodeScanner({ isOpen, onClose, onScanSuccess, lang, isDarkMode
             📋 {t.tabs.presets}
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab('camera')}
-            className={`flex-1 py-3 text-center transition-colors border-b-2 ${
+            className={`flex-1 py-3 px-2 text-center transition-colors border-b-2 ${
               activeTab === 'camera' 
                 ? 'border-[#C5A059] text-[#C5A059] bg-stone-50/50 dark:bg-zinc-950/20' 
                 : 'border-transparent text-stone-400 hover:text-stone-600'
@@ -639,8 +676,9 @@ export function QRCodeScanner({ isOpen, onClose, onScanSuccess, lang, isDarkMode
             📷 {t.tabs.camera}
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab('upload')}
-            className={`flex-1 py-3 text-center transition-colors border-b-2 ${
+            className={`flex-1 py-3 px-2 text-center transition-colors border-b-2 ${
               activeTab === 'upload' 
                 ? 'border-[#C5A059] text-[#C5A059] bg-stone-50/50 dark:bg-zinc-950/20' 
                 : 'border-transparent text-stone-400 hover:text-stone-600'
@@ -682,6 +720,132 @@ export function QRCodeScanner({ isOpen, onClose, onScanSuccess, lang, isDarkMode
         {/* Tab Contents */}
         <div className="flex-1 overflow-y-auto p-4 min-h-[300px]">
           
+          {/* TAB 0: AI IMAGE SEARCH */}
+          {activeTab === 'image_search' && (
+            <div className="space-y-4">
+              {/* Drag and Drop Zone */}
+              <div
+                onDragOver={(e) => { e.preventDefault(); }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                    const file = e.dataTransfer.files[0];
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                      if (handleImageSearch) handleImageSearch(reader.result as string);
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                }}
+                className={`p-8 border-2 border-dashed rounded-3xl text-center flex flex-col items-center justify-center space-y-3 cursor-pointer transition-all duration-200 ${
+                  isDarkMode 
+                    ? 'border-zinc-800 bg-zinc-950/40 hover:border-[#C5A059]' 
+                    : 'border-stone-200 bg-stone-50/50 hover:border-[#C5A059]'
+                }`}
+              >
+                <div className="p-3 bg-white dark:bg-zinc-900 rounded-2xl border border-stone-200/50 dark:border-zinc-800 shadow-sm">
+                  <Camera size={24} className="text-[#C5A059]" />
+                </div>
+                
+                <div className="space-y-1">
+                  <span className="text-[11.5px] font-bold block">
+                    {lang === 'en' ? 'Drag & drop image here, or click to browse' : 'ምስሉን እዚህ ይጎትቱት ወይም ይምረጡት'}
+                  </span>
+                  <span className="text-[9.5px] opacity-50 block max-w-xs mx-auto leading-normal">
+                    {lang === 'en' ? 'Supports PNG, JPG, or WEBP (Max 10MB)' : 'PNG, JPG ወይም WEBP ምስሎች (ከ 10MB በታች)'}
+                  </span>
+                </div>
+
+                <label className="px-3.5 py-1.5 bg-[#1E3A1A] text-white rounded-xl text-[10.5px] font-bold uppercase cursor-pointer hover:bg-[#1E3A1A]/95 active:scale-95 transition-all">
+                  {lang === 'en' ? 'Browse Files' : 'ፎቶ ምረጥ'}
+                  <input 
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        const file = e.target.files[0];
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          if (handleImageSearch) handleImageSearch(reader.result as string);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                </label>
+              </div>
+
+              {/* Loader */}
+              {imageSearchLoading && (
+                <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-center space-y-2">
+                  <RotateCw className="animate-spin mx-auto text-amber-500" size={20} />
+                  <p className="text-xs font-bold text-amber-500 animate-pulse">
+                    {lang === 'en' ? 'AI Vision Model analyzing image structures...' : 'AI ምስላዊ መፈለጊያው ምርቱን በመተንተን ላይ ነው...'}
+                  </p>
+                </div>
+              )}
+
+              {/* Custom High-Quality Simulation Presets for Testing */}
+              <div className="space-y-2.5">
+                <div className="flex justify-between items-center">
+                  <span className="text-[11px] font-extrabold uppercase text-amber-500 tracking-wider">
+                    🎁 {lang === 'en' ? 'High-fidelity Demo Images' : 'ለሙከራ የሚሆኑ ምስሎች'}
+                  </span>
+                  <span className="text-[8px] bg-amber-500/10 text-amber-500 px-1.5 py-0.5 rounded-full uppercase font-mono">1-Click Test</span>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2.5">
+                  {/* Preset 1: Habesha Dress */}
+                  <button
+                    onClick={() => {
+                      if (handleImageSearch) handleImageSearch("data:image/jpeg;base64,habeshakemisdummydata123456");
+                    }}
+                    className={`p-2 rounded-xl border text-left flex gap-2.5 items-center cursor-pointer transition-all ${
+                      isDarkMode 
+                        ? 'bg-zinc-950/40 border-zinc-800 hover:border-amber-500' 
+                        : 'bg-stone-50 border-stone-200 hover:border-[#1E3A1A]'
+                    }`}
+                  >
+                    <img 
+                      src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=200" 
+                      alt="Habesha" 
+                      className="w-10 h-10 rounded-lg object-cover border"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="min-w-0">
+                      <h5 className="text-[10px] font-bold truncate">Habesha Kemis</h5>
+                      <p className="text-[8px] opacity-60">Traditional Wear</p>
+                    </div>
+                  </button>
+
+                  {/* Preset 2: iPhone */}
+                  <button
+                    onClick={() => {
+                      if (handleImageSearch) handleImageSearch("data:image/jpeg;base64,iphonedummydata12345");
+                    }}
+                    className={`p-2 rounded-xl border text-left flex gap-2.5 items-center cursor-pointer transition-all ${
+                      isDarkMode 
+                        ? 'bg-zinc-950/40 border-zinc-800 hover:border-amber-500' 
+                        : 'bg-stone-50 border-stone-200 hover:border-[#1E3A1A]'
+                    }`}
+                  >
+                    <img 
+                      src="https://images.unsplash.com/photo-1695048133142-1a20484d2569?auto=format&fit=crop&q=80&w=200" 
+                      alt="iPhone" 
+                      className="w-10 h-10 rounded-lg object-cover border"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="min-w-0">
+                      <h5 className="text-[10px] font-bold truncate">iPhone 15 Pro</h5>
+                      <p className="text-[8px] opacity-60">Electronics</p>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* TAB 1: PRESETS */}
           {activeTab === 'presets' && (
             <div className="space-y-4">
